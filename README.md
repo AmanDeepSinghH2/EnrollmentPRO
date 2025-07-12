@@ -1,0 +1,1 @@
+EnrollmentPro is a modern, digital university enrollment system built to simplify and streamline the enrollment process for both students and faculty. It replaces the traditional paper-based workflow with a secure, efficient, and user-friendly platform designed for seamless academic operations.
