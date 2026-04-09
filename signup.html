@@ -20,6 +20,14 @@
       <form id="signupForm">
 
         <div class="mb-4">
+          <label for="role" class="block text-left text-lg font-medium">I am a:</label>
+          <select id="role" name="role" class="w-full p-2 rounded-md border-gray-300" required onchange="toggleFields()">
+            <option value="faculty">Faculty</option>
+            <option value="student">Student</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
           <label for="username" class="block text-left text-lg font-medium">Username</label>
           <input type="text" id="username" name="username" class="w-full p-2 rounded-md border-gray-300" required />
         </div>
@@ -34,16 +42,34 @@
           <input type="password" id="password" name="password" class="w-full p-2 rounded-md border-gray-300" required />
         </div>
 
-        <!-- Faculty Sign Up -->
-        <div id="facultyForm" class="mb-4">
-          <label for="facultyName" class="block text-left text-lg font-medium">Faculty Name</label>
-          <input type="text" id="facultyName" name="facultyName" class="w-full p-2 rounded-md border-gray-300" required />
+        <!-- Faculty Fields -->
+        <div id="facultyFields" class="mb-4">
+          <label for="facultyName" class="block text-left text-lg font-medium">Full Name</label>
+          <input type="text" id="facultyName" name="facultyName" class="w-full p-2 rounded-md border-gray-300" />
           
-          <label for="facultyPhoneNumber" class="block text-left text-lg font-medium">Faculty Phone Number</label>
+          <label for="facultyPhoneNumber" class="block text-left text-lg font-medium">Phone Number</label>
           <input type="text" id="facultyPhoneNumber" name="facultyPhoneNumber" class="w-full p-2 rounded-md border-gray-300" />
           
-          <label for="facultyDOB" class="block text-left text-lg font-medium">Faculty Date of Birth</label>
+          <label for="facultyDOB" class="block text-left text-lg font-medium">Date of Birth</label>
           <input type="date" id="facultyDOB" name="facultyDOB" class="w-full p-2 rounded-md border-gray-300" />
+        </div>
+
+        <!-- Student Fields (hidden by default) -->
+        <div id="studentFields" class="mb-4 hidden">
+          <label for="studentName" class="block text-left text-lg font-medium">Full Name</label>
+          <input type="text" id="studentName" name="studentName" class="w-full p-2 rounded-md border-gray-300" />
+          
+          <label for="studentAddress" class="block text-left text-lg font-medium">Address</label>
+          <input type="text" id="studentAddress" name="studentAddress" class="w-full p-2 rounded-md border-gray-300" />
+          
+          <label for="studentPhoneNumber" class="block text-left text-lg font-medium">Phone Number</label>
+          <input type="text" id="studentPhoneNumber" name="studentPhoneNumber" class="w-full p-2 rounded-md border-gray-300" />
+          
+          <label for="studentDOB" class="block text-left text-lg font-medium">Date of Birth</label>
+          <input type="date" id="studentDOB" name="studentDOB" class="w-full p-2 rounded-md border-gray-300" />
+
+          <label for="studentSemester" class="block text-left text-lg font-medium">Semester</label>
+          <input type="number" id="studentSemester" name="studentSemester" min="1" max="8" value="1" class="w-full p-2 rounded-md border-gray-300" />
         </div>
 
         <button type="submit" class="bg-teal-600 text-white py-2 px-4 rounded hover:bg-teal-500 mt-4">Sign Up</button>
@@ -56,6 +82,19 @@
       <script>
         const signupForm = document.getElementById("signupForm");
         const messageDiv = document.getElementById("message");
+        const facultyFields = document.getElementById("facultyFields");
+        const studentFields = document.getElementById("studentFields");
+
+        function toggleFields() {
+          const role = signupForm.role.value;
+          if (role === "student") {
+            facultyFields.classList.add("hidden");
+            studentFields.classList.remove("hidden");
+          } else {
+            facultyFields.classList.remove("hidden");
+            studentFields.classList.add("hidden");
+          }
+        }
 
         signupForm.addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -64,22 +103,34 @@
           const username = signupForm.username.value.trim();
           const emailid = signupForm.emailid.value.trim();
           const password = signupForm.password.value;
-          const role = "faculty";
+          const role = signupForm.role.value;
 
-          // Collect faculty fields
-          const extraData = {
-            facultyName: signupForm.facultyName.value.trim(),
-            facultyPhoneNumber: signupForm.facultyPhoneNumber.value.trim(),
-            facultyDOB: signupForm.facultyDOB.value
-          };
+          let payload = { username, emailid, password, role };
+
+          if (role === "faculty") {
+            payload.facultyName = signupForm.facultyName.value.trim();
+            payload.facultyPhoneNumber = signupForm.facultyPhoneNumber.value.trim();
+            payload.facultyDOB = signupForm.facultyDOB.value;
+            
+            if (!payload.facultyName) {
+              messageDiv.textContent = "Full name is required.";
+              return;
+            }
+          } else {
+            payload.studentName = signupForm.studentName.value.trim();
+            payload.studentAddress = signupForm.studentAddress.value.trim();
+            payload.studentPhoneNumber = signupForm.studentPhoneNumber.value.trim();
+            payload.studentDOB = signupForm.studentDOB.value;
+            payload.studentSemester = signupForm.studentSemester.value;
+
+            if (!payload.studentName) {
+              messageDiv.textContent = "Full name is required.";
+              return;
+            }
+          }
 
           if (username.length < 3 || password.length < 6) {
             messageDiv.textContent = "Username must be at least 3 characters and password at least 6 characters.";
-            return;
-          }
-
-          if (!extraData.facultyName) {
-            messageDiv.textContent = "Faculty name is required.";
             return;
           }
 
@@ -89,7 +140,7 @@
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ username, emailid, password, role, ...extraData }),
+              body: JSON.stringify(payload),
             });
 
             const result = await response.json();
@@ -98,7 +149,9 @@
               messageDiv.style.color = "green";
               messageDiv.textContent = result.message;
               signupForm.reset();
-              window.location.href = "faculty_login.html";
+              setTimeout(() => {
+                window.location.href = role === "faculty" ? "faculty_login.html" : "student_login.html";
+              }, 2000);
             } else {
               messageDiv.style.color = "red";
               messageDiv.textContent = result.error || "Sign up failed";
@@ -109,6 +162,7 @@
           }
         });
       </script>
+
     </div>
   </div>
 
