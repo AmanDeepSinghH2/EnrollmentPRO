@@ -14,26 +14,31 @@
       fetch('backend/faculty_dashboard_data.php')
         .then(response => response.json())
         .then(data => {
+          if (data.error) throw new Error(data.error);
+
           document.getElementById('facultyName').textContent = data.user.name;
-          document.getElementById('facultyID').textContent = data.user.userID;
+          document.getElementById('facultyID').textContent = 'ID: ' + data.user.userID;
 
           const coursesList = document.getElementById('coursesList');
-          const selectClass = document.getElementById('selectClass');
+          coursesList.innerHTML = ''; // Clear loading state
 
-          data.courses.forEach(course => {
+          if (data.courses && data.courses.length > 0) {
+            data.courses.forEach(course => {
+              const li = document.createElement('li');
+              li.className = "bg-[white] bg-opacity-80 rounded-md px-4 py-2 font-semibold shadow-[white]";
+              li.textContent = course.course_name;
+              coursesList.appendChild(li);
+            });
+          } else {
             const li = document.createElement('li');
-            li.className = "bg-[white] bg-opacity-80 rounded-md px-4 py-2 font-semibold shadow-[white]";
-            li.textContent = course.course_name;
+            li.className = "bg-gray-100 rounded-md px-4 py-2 text-gray-500 italic text-center";
+            li.textContent = "No courses assigned";
             coursesList.appendChild(li);
-
-            const option = document.createElement('option');
-            option.value = course.course_name;
-            option.textContent = course.course_name;
-            selectClass.appendChild(option);
-          });
+          }
         })
         .catch(error => {
           console.error('Error fetching faculty dashboard data:', error);
+          document.getElementById('facultyName').textContent = 'Error loading data';
         });
     });
   </script>
