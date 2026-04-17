@@ -10,12 +10,12 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDemoKeyReplace",
-  authDomain: "enrollmentpro-srmist.firebaseapp.com",
-  projectId: "enrollmentpro-srmist",
-  storageBucket: "enrollmentpro-srmist.firebasestorage.app",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:abc123replace"
+  apiKey: "AIzaSyBayrQoj94vJeOqIeWwa0YK-cfie1kGsdQ",
+  authDomain: "enrollmentpro-e30fd.firebaseapp.com",
+  projectId: "enrollmentpro-e30fd",
+  storageBucket: "enrollmentpro-e30fd.firebasestorage.app",
+  messagingSenderId: "465102462265",
+  appId: "1:465102462265:web:7e73d947065e0095255ce8"
 };
 
 const app = initializeApp(firebaseConfig);
