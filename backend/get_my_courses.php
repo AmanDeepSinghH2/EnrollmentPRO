@@ -1,6 +1,7 @@
 <?php
+session_start();
 header('Content-Type: application/json');
-include 'db_connection.php';
+require_once 'db_connection.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
@@ -8,13 +9,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-if (!isset($_GET['studentID'])) {
-    http_response_code(400);
-    echo json_encode(['error' => 'studentID parameter is required']);
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'student') {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized access']);
     exit;
 }
 
-$studentID = intval($_GET['studentID']);
+$studentID = $_SESSION['user']['userID'];
 
 $sql = "SELECT c.CourseID, c.Name AS CourseName
         FROM Enrollments e
