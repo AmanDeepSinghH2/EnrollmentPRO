@@ -1,21 +1,39 @@
 <?php
-include 'db_connection.php';
+session_start();
+header('Content-Type: application/json');
+require_once 'db_connection.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name = $_POST['name'] ?? '';
-
-    $stmt = $conn->prepare("INSERT INTO Courses (Name) VALUES (?)");
-    $stmt->bind_param("s", $name);
-
-    if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Course added successfully"]);
-    } else {
-        echo json_encode(["status" => "error", "message" => $stmt->error]);
-    }
-
-    $stmt->close();
-    $conn->close();
-} else {
-    echo json_encode(["status" => "error", "message" => "Invalid request method"]);
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    http_response_code(405);
+    echo json_encode(["status" => "error", "message" => "Method not allowed"]);
+    exit;
 }
+
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'faculty') {
+    http_response_code(401);
+    echo json_encode(["status" => "error", "message" => "Unauthorized access"]);
+    exit;
+}
+
+$data = json_decode(file_get_contents('php://input'), true);
+$name = $data['name'] ?? '';
+
+if (empty($name)) {
+    http_response_code(400);
+    echo json_encode(["status" => "error", "message" => "Course name is required"]);
+    exit;
+}
+
+$stmt = $conn->prepare("INSERT INTO Courses (Name) VALUES (?)");
+$stmt->bind_param("s", $name);
+
+if ($stmt->execute()) {
+    echo json_encode(["status" => "success", "message" => "Course added successfully"]);
+} else {
+    http_response_code(500);
+    echo json_encode(["status" => "error", "message" => $stmt->error]);
+}
+
+$stmt->close();
+$conn->close();
 ?>
