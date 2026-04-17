@@ -1,18 +1,19 @@
 <?php
-include 'db_connection.php';
+header('Content-Type: application/json');
+require_once 'db_connection.php';
 
 $sql = "SELECT CourseID, Name FROM Courses ORDER BY CourseID DESC";
-$result = $conn->query($sql);
+$stmt = $conn->prepare($sql);
+$stmt->execute();
+$result = $stmt->get_result();
 
 $courses = [];
-
-if ($result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
-        $courses[] = $row;
-    }
+while ($row = $result->fetch_assoc()) {
+    $courses[] = $row;
 }
 
-echo json_encode($courses);
-
+$stmt->close();
 $conn->close();
+
+echo json_encode($courses);
 ?>
