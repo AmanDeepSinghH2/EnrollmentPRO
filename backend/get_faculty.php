@@ -1,18 +1,26 @@
 <?php
-include 'db_connection.php';
+session_start();
+header('Content-Type: application/json');
+require_once 'db_connection.php';
 
-$sql = "SELECT FacultyID, Name, PhoneNumber, DOB FROM Faculty ORDER BY FacultyID DESC";
-$result = $conn->query($sql);
-
-$faculty = [];
-
-if ($result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
-        $faculty[] = $row;
-    }
+if (!isset($_SESSION['user'])) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized access']);
+    exit;
 }
 
-echo json_encode($faculty);
+$sql = "SELECT FacultyID, Name, EmailID, PhoneNumber, DOB FROM Faculty ORDER BY FacultyID DESC";
+$stmt = $conn->prepare($sql);
+$stmt->execute();
+$result = $stmt->get_result();
 
+$faculty = [];
+while ($row = $result->fetch_assoc()) {
+    $faculty[] = $row;
+}
+
+$stmt->close();
 $conn->close();
+
+echo json_encode($faculty);
 ?>
