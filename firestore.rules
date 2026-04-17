@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isRole(role) {
+      return isAuth() && getUserRole() == role;
+    }
+
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // Users: read own profile or faculty reads all; create/update own
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isRole('faculty');
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // Courses: authenticated can read, faculty can write
+    match /courses/{courseId} {
+      allow read: if isAuth();
+      allow write: if isRole('faculty');
+    }
+
+    // CourseFaculty: authenticated can read, faculty can write
+    match /courseFaculty/{cfId} {
+      allow read: if isAuth();
+      allow write: if isRole('faculty');
+    }
+
+    // Enrollments: students read own, faculty read/write all
+    match /enrollments/{enrollmentId} {
+      allow read: if isAuth() && (
+        resource.data.studentId == request.auth.uid || isRole('faculty')
+      );
+      allow create: if isAuth();
+      allow update, delete: if isRole('faculty');
+    }
+
+    // Grades: students read own, faculty read/write all
+    match /grades/{gradeId} {
+      allow read: if isAuth() && (
+        resource.data.studentId == request.auth.uid || isRole('faculty')
+      );
+      allow write: if isRole('faculty');
+    }
+
+    // StudentParents: students read own, faculty read/write all
+    match /studentParents/{parentId} {
+      allow read: if isAuth() && (
+        resource.data.studentId == request.auth.uid || isRole('faculty')
+      );
+      allow write: if isRole('faculty');
+    }
+  }
+}

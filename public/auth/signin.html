@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign In — EnrollmentPRO</title>
+  <meta name="description" content="Sign in to your EnrollmentPRO account." />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body style="padding-top:0;">
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="auth-layout" style="padding-top:var(--header-height);">
+    <div class="auth-card form-card animate-scale-in">
+      <h1 class="auth-title">Welcome Back</h1>
+      <p class="auth-subtitle">Sign in to your EnrollmentPRO account</p>
+
+      <form id="signin-form">
+        <div class="form-group">
+          <label for="email" class="form-label form-label--required">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="your.email@srmist.edu" required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label form-label--required">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="Enter your password" required minlength="6" autocomplete="current-password" />
+        </div>
+
+        <div id="error-msg" class="form-error" style="text-align:center; margin-bottom:var(--space-4); display:none;"></div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="submit-btn">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Don't have an account? <a href="/auth/signup.html">Sign Up</a>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { renderHeader } from '/js/components/header.js';
+    import { signin, getUserRole } from '/js/auth.js';
+    import { redirectIfAuth } from '/js/guards.js';
+    import { showToast } from '/js/components/toast.js';
+    import { getFriendlyError } from '/js/utils.js';
+
+    // Render public header
+    renderHeader(null, null, 'signin');
+
+    // Redirect if already logged in
+    await redirectIfAuth();
+
+    // Form handling
+    const form = document.getElementById('signin-form');
+    const errorMsg = document.getElementById('error-msg');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+
+      const email = form.email.value.trim();
+      const password = form.password.value;
+
+      if (!email || password.length < 6) {
+        errorMsg.textContent = 'Please enter a valid email and password (min 6 characters).';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
+      submitBtn.classList.add('btn-loading');
+
+      try {
+        const cred = await signin(email, password);
+        const role = await getUserRole(cred.user.uid);
+        showToast('Welcome back!', 'success');
+
+        setTimeout(() => {
+          window.location.href = role === 'student'
+            ? '/student/dashboard.html'
+            : '/faculty/dashboard.html';
+        }, 500);
+      } catch (err) {
+        errorMsg.textContent = getFriendlyError(err);
+        errorMsg.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+        submitBtn.classList.remove('btn-loading');
+      }
+    });
+  </script>
+
+</body>
+</html>

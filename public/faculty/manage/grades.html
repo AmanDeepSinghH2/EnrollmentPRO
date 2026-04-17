@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Grades — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Grade Management</h1>
+      </div>
+
+      <div class="form-card mb-8 animate-fade-in-up">
+        <h2 style="font-size:var(--font-size-lg); font-weight:700; margin-bottom:var(--space-5);">Assign Grade</h2>
+        <form id="add-form">
+          <div class="form-group">
+            <label for="studentId" class="form-label form-label--required">Student</label>
+            <select id="studentId" class="form-select" required>
+              <option value="">Select Student</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="courseId" class="form-label form-label--required">Course</label>
+            <select id="courseId" class="form-select" required>
+              <option value="">Select Course</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="grade" class="form-label form-label--required">Grade</label>
+            <select id="grade" class="form-select" required>
+              <option value="">Select Grade</option>
+              <option value="A+">A+</option>
+              <option value="A">A</option>
+              <option value="B+">B+</option>
+              <option value="B">B</option>
+              <option value="C+">C+</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="F">F</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="gradeDate" class="form-label">Grade Date</label>
+            <input type="date" id="gradeDate" class="form-input" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Assign Grade</button>
+        </form>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">🎓 All Grades</div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr><th>Student</th><th>Course</th><th>Grade</th><th>Date</th><th>Action</th></tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="5" class="table-empty">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, addDoc, getDocs, deleteDoc, doc, query, where }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { addCell, addBadgeCell, formatDate } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', '');
+
+    const tbody = document.getElementById('table-body');
+    const form = document.getElementById('add-form');
+
+    // Populate students
+    const studentsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+    const studentsMap = {};
+    const studentSelect = document.getElementById('studentId');
+    studentsSnap.forEach(d => {
+      studentsMap[d.id] = d.data().name;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.data().name;
+      studentSelect.appendChild(opt);
+    });
+
+    // Populate courses
+    const coursesSnap = await getDocs(collection(db, 'courses'));
+    const coursesMap = {};
+    const courseSelect = document.getElementById('courseId');
+    coursesSnap.forEach(d => {
+      coursesMap[d.id] = d.data().name;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.data().name;
+      courseSelect.appendChild(opt);
+    });
+
+    document.getElementById('gradeDate').valueAsDate = new Date();
+
+    async function loadData() {
+      const snap = await getDocs(collection(db, 'grades'));
+      tbody.innerHTML = '';
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No grades assigned yet.</td></tr>'; return; }
+      snap.forEach(d => {
+        const data = d.data();
+        const tr = document.createElement('tr');
+        addCell(tr, studentsMap[data.studentId] || data.studentId);
+        addCell(tr, coursesMap[data.courseId] || data.courseId);
+
+        const gradeType = ['A+', 'A', 'B+', 'B'].includes(data.grade) ? 'success'
+          : ['C+', 'C'].includes(data.grade) ? 'warning' : 'error';
+        addBadgeCell(tr, data.grade, gradeType);
+
+        addCell(tr, formatDate(data.gradeDate));
+
+        const actionTd = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger btn-sm';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', async () => {
+          if (confirm('Delete this grade?')) {
+            await deleteDoc(doc(db, 'grades', d.id));
+            showToast('Grade deleted', 'success');
+            loadData();
+          }
+        });
+        actionTd.appendChild(delBtn);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const studentId = studentSelect.value;
+      const courseId = courseSelect.value;
+      const grade = document.getElementById('grade').value;
+      const gradeDate = document.getElementById('gradeDate').value;
+      if (!studentId || !courseId || !grade) return;
+      try {
+        await addDoc(collection(db, 'grades'), { studentId, courseId, grade, gradeDate, createdAt: new Date().toISOString() });
+        showToast('Grade assigned!', 'success');
+        form.reset();
+        document.getElementById('gradeDate').valueAsDate = new Date();
+        loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    loadData();
+  </script>
+
+</body>
+</html>

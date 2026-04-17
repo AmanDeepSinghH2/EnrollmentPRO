@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enrollment Status — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Enrollment Status</h1>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">
+          <span>📝 My Enrollment History</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="enrollment-table">
+            <thead>
+              <tr>
+                <th>Course</th>
+                <th>Status</th>
+                <th>Enrollment Date</th>
+                <th>Semester</th>
+              </tr>
+            </thead>
+            <tbody id="enrollment-tbody">
+              <tr><td colspan="4" class="table-empty">Loading enrollment records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, query, where, getDocs, doc, getDoc, orderBy }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { formatDate, addCell, addBadgeCell } from '/js/utils.js';
+
+    renderFooter();
+    const { user, profile } = await requireAuth('student');
+    renderHeader(user, 'student', 'enrollment');
+
+    const tbody = document.getElementById('enrollment-tbody');
+
+    try {
+      const q = query(
+        collection(db, 'enrollments'),
+        where('studentId', '==', user.uid)
+      );
+      const snap = await getDocs(q);
+      tbody.innerHTML = '';
+
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No enrollment records found.</td></tr>';
+        return;
+      }
+
+      for (const d of snap.docs) {
+        const data = d.data();
+        const tr = document.createElement('tr');
+
+        // Get course name
+        let courseName = '—';
+        if (data.courseId) {
+          const courseDoc = await getDoc(doc(db, 'courses', data.courseId));
+          if (courseDoc.exists()) courseName = courseDoc.data().name;
+        }
+
+        addCell(tr, courseName);
+        addBadgeCell(tr, data.status || 'Pending', data.status === 'Enrolled' ? 'success' : 'warning');
+        addCell(tr, formatDate(data.enrollmentDate));
+        addCell(tr, data.semester || '—');
+
+        tbody.appendChild(tr);
+      }
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = '<tr><td colspan="4" class="table-empty text-error">Failed to load enrollment data.</td></tr>';
+    }
+  </script>
+
+</body>
+</html>

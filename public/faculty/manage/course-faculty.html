@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Course-Faculty Assignment — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Course-Faculty Assignment</h1>
+      </div>
+
+      <div class="form-card mb-8 animate-fade-in-up">
+        <h2 style="font-size:var(--font-size-lg); font-weight:700; margin-bottom:var(--space-5);">Assign Faculty to Course</h2>
+        <form id="add-form">
+          <div class="form-group">
+            <label for="courseId" class="form-label form-label--required">Course</label>
+            <select id="courseId" class="form-select" required>
+              <option value="">Select Course</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="facultyId" class="form-label form-label--required">Faculty</label>
+            <select id="facultyId" class="form-select" required>
+              <option value="">Select Faculty</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Assign</button>
+        </form>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">🔗 Assignments</div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr><th>Course</th><th>Faculty</th><th>Action</th></tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="3" class="table-empty">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, addDoc, getDocs, deleteDoc, doc, getDoc, query, where }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { addCell } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', '');
+
+    const tbody = document.getElementById('table-body');
+    const form = document.getElementById('add-form');
+    const courseSelect = document.getElementById('courseId');
+    const facultySelect = document.getElementById('facultyId');
+
+    // Populate dropdowns
+    const coursesSnap = await getDocs(collection(db, 'courses'));
+    const coursesMap = {};
+    coursesSnap.forEach(d => {
+      coursesMap[d.id] = d.data().name;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.data().name;
+      courseSelect.appendChild(opt);
+    });
+
+    const facultySnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'faculty')));
+    const facultyMap = {};
+    facultySnap.forEach(d => {
+      facultyMap[d.id] = d.data().name;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.data().name;
+      facultySelect.appendChild(opt);
+    });
+
+    async function loadData() {
+      const snap = await getDocs(collection(db, 'courseFaculty'));
+      tbody.innerHTML = '';
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No assignments yet.</td></tr>'; return; }
+      snap.forEach(d => {
+        const data = d.data();
+        const tr = document.createElement('tr');
+        addCell(tr, coursesMap[data.courseId] || data.courseId);
+        addCell(tr, facultyMap[data.facultyId] || data.facultyId);
+        const actionTd = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger btn-sm';
+        delBtn.textContent = 'Remove';
+        delBtn.addEventListener('click', async () => {
+          if (confirm('Remove this assignment?')) {
+            await deleteDoc(doc(db, 'courseFaculty', d.id));
+            showToast('Assignment removed', 'success');
+            loadData();
+          }
+        });
+        actionTd.appendChild(delBtn);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const courseId = courseSelect.value;
+      const facultyId = facultySelect.value;
+      if (!courseId || !facultyId) return;
+      try {
+        await addDoc(collection(db, 'courseFaculty'), { courseId, facultyId, createdAt: new Date().toISOString() });
+        showToast('Faculty assigned to course!', 'success');
+        form.reset();
+        loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    loadData();
+  </script>
+
+</body>
+</html>

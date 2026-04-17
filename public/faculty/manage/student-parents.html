@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Parents — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Student Parent Info</h1>
+      </div>
+
+      <div class="form-card mb-8 animate-fade-in-up">
+        <h2 style="font-size:var(--font-size-lg); font-weight:700; margin-bottom:var(--space-5);">Add Parent Contact</h2>
+        <form id="add-form">
+          <div class="form-group">
+            <label for="studentId" class="form-label form-label--required">Student</label>
+            <select id="studentId" class="form-select" required>
+              <option value="">Select Student</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="parentType" class="form-label form-label--required">Parent Type</label>
+            <select id="parentType" class="form-select" required>
+              <option value="Mother">Mother</option>
+              <option value="Father">Father</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="phone" class="form-label form-label--required">Phone Number</label>
+            <input type="tel" id="phone" class="form-input" placeholder="10-digit phone number" required maxlength="15" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add Parent Info</button>
+        </form>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">👪 Parent Records</div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr><th>Student</th><th>Parent Type</th><th>Phone</th><th>Action</th></tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="4" class="table-empty">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, addDoc, getDocs, deleteDoc, doc, query, where }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { addCell, formatPhone } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', '');
+
+    const tbody = document.getElementById('table-body');
+    const form = document.getElementById('add-form');
+
+    // Populate students
+    const studentsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+    const studentsMap = {};
+    const studentSelect = document.getElementById('studentId');
+    studentsSnap.forEach(d => {
+      studentsMap[d.id] = d.data().name;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.data().name;
+      studentSelect.appendChild(opt);
+    });
+
+    async function loadData() {
+      const snap = await getDocs(collection(db, 'studentParents'));
+      tbody.innerHTML = '';
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No parent records yet.</td></tr>'; return; }
+      snap.forEach(d => {
+        const data = d.data();
+        const tr = document.createElement('tr');
+        addCell(tr, studentsMap[data.studentId] || data.studentId);
+        addCell(tr, data.parentType);
+        addCell(tr, formatPhone(data.phone));
+        const actionTd = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger btn-sm';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', async () => {
+          if (confirm('Delete this parent record?')) {
+            await deleteDoc(doc(db, 'studentParents', d.id));
+            showToast('Parent record deleted', 'success');
+            loadData();
+          }
+        });
+        actionTd.appendChild(delBtn);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const studentId = studentSelect.value;
+      const parentType = document.getElementById('parentType').value;
+      const phone = document.getElementById('phone').value.trim();
+      if (!studentId || !phone) return;
+      try {
+        await addDoc(collection(db, 'studentParents'), { studentId, parentType, phone, createdAt: new Date().toISOString() });
+        showToast('Parent info added!', 'success');
+        form.reset();
+        loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    loadData();
+  </script>
+
+</body>
+</html>

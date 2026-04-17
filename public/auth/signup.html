@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign Up — EnrollmentPRO</title>
+  <meta name="description" content="Create your EnrollmentPRO account as a student or faculty member." />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body style="padding-top:0;">
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="auth-layout" style="padding-top:var(--header-height);">
+    <div class="auth-card form-card animate-scale-in" style="max-width:520px;">
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-subtitle">Join EnrollmentPRO as a student or faculty member</p>
+
+      <!-- Role Toggle -->
+      <div class="role-toggle">
+        <button type="button" class="role-toggle-btn active" data-role="student" id="role-student">🎓 Student</button>
+        <button type="button" class="role-toggle-btn" data-role="faculty" id="role-faculty">👨‍🏫 Faculty</button>
+      </div>
+
+      <form id="signup-form">
+        <input type="hidden" id="role" value="student" />
+
+        <!-- Common Fields -->
+        <div class="form-group">
+          <label for="name" class="form-label form-label--required">Full Name</label>
+          <input type="text" id="name" class="form-input" placeholder="Enter your full name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="email" class="form-label form-label--required">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="your.email@srmist.edu" required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label form-label--required">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="Minimum 6 characters" required minlength="6" autocomplete="new-password" />
+        </div>
+
+        <div class="form-group">
+          <label for="phone" class="form-label">Phone Number</label>
+          <input type="tel" id="phone" class="form-input" placeholder="10-digit phone number" maxlength="15" />
+        </div>
+
+        <div class="form-group">
+          <label for="dob" class="form-label">Date of Birth</label>
+          <input type="date" id="dob" class="form-input" />
+        </div>
+
+        <!-- Student-only Fields -->
+        <div id="student-fields">
+          <div class="form-group">
+            <label for="address" class="form-label">Address</label>
+            <input type="text" id="address" class="form-input" placeholder="Your address" />
+          </div>
+
+          <div class="form-group">
+            <label for="semester" class="form-label">Current Semester</label>
+            <select id="semester" class="form-select">
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Faculty-only Fields (none extra currently but placeholder for future) -->
+        <div id="faculty-fields" class="hidden"></div>
+
+        <div id="error-msg" class="form-error" style="text-align:center; margin-bottom:var(--space-4); display:none;"></div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="submit-btn">
+          Create Account
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account? <a href="/auth/signin.html">Sign In</a>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { renderHeader } from '/js/components/header.js';
+    import { signup } from '/js/auth.js';
+    import { redirectIfAuth } from '/js/guards.js';
+    import { showToast } from '/js/components/toast.js';
+    import { getFriendlyError } from '/js/utils.js';
+
+    // Render public header
+    renderHeader(null, null, '');
+
+    // Redirect if already logged in
+    await redirectIfAuth();
+
+    // Role toggle
+    const roleInput = document.getElementById('role');
+    const studentFields = document.getElementById('student-fields');
+    const facultyFields = document.getElementById('faculty-fields');
+    const roleStudentBtn = document.getElementById('role-student');
+    const roleFacultyBtn = document.getElementById('role-faculty');
+
+    roleStudentBtn.addEventListener('click', () => {
+      roleInput.value = 'student';
+      roleStudentBtn.classList.add('active');
+      roleFacultyBtn.classList.remove('active');
+      studentFields.classList.remove('hidden');
+      facultyFields.classList.add('hidden');
+    });
+
+    roleFacultyBtn.addEventListener('click', () => {
+      roleInput.value = 'faculty';
+      roleFacultyBtn.classList.add('active');
+      roleStudentBtn.classList.remove('active');
+      facultyFields.classList.remove('hidden');
+      studentFields.classList.add('hidden');
+    });
+
+    // Form handling
+    const form = document.getElementById('signup-form');
+    const errorMsg = document.getElementById('error-msg');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const phone = document.getElementById('phone').value.trim();
+      const dob = document.getElementById('dob').value;
+      const role = roleInput.value;
+
+      if (!name || !email || password.length < 6) {
+        errorMsg.textContent = 'Name, email, and password (min 6 chars) are required.';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      const profileData = { name, role, phone, dob };
+
+      if (role === 'student') {
+        profileData.address = document.getElementById('address').value.trim();
+        profileData.semester = parseInt(document.getElementById('semester').value) || 1;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+      submitBtn.classList.add('btn-loading');
+
+      try {
+        await signup(email, password, profileData);
+        showToast('Account created successfully!', 'success');
+
+        setTimeout(() => {
+          window.location.href = role === 'student'
+            ? '/student/dashboard.html'
+            : '/faculty/dashboard.html';
+        }, 800);
+      } catch (err) {
+        errorMsg.textContent = getFriendlyError(err);
+        errorMsg.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+        submitBtn.classList.remove('btn-loading');
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About Us — EnrollmentPRO</title>
+  <meta name="description" content="Learn about EnrollmentPRO — a modern university enrollment system built for SRMIST." />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">About EnrollmentPRO</h1>
+      </div>
+
+      <div style="max-width:720px; margin:0 auto;">
+        <div class="card" style="padding:var(--space-8); margin-bottom:var(--space-6);">
+          <h2 style="font-size:var(--font-size-2xl); font-weight:700; margin-bottom:var(--space-4); color:var(--color-primary);">Our Mission</h2>
+          <p style="color:var(--color-text-secondary); line-height:1.8; margin-bottom:var(--space-4);">
+            EnrollmentPRO is a modern, digital university enrollment system built to simplify and streamline the enrollment process for both students and faculty. It replaces the traditional paper-based workflow with a secure, efficient, and user-friendly platform designed for seamless academic operations.
+          </p>
+          <p style="color:var(--color-text-secondary); line-height:1.8;">
+            Designed specifically for SRMIST, our platform provides comprehensive tools for every phase of the academic journey — from course enrollment to grade management.
+          </p>
+        </div>
+
+        <div class="card" style="padding:var(--space-8); margin-bottom:var(--space-6);">
+          <h2 style="font-size:var(--font-size-2xl); font-weight:700; margin-bottom:var(--space-4); color:var(--color-primary);">Technology Stack</h2>
+          <div class="grid-2" style="gap:var(--space-4);">
+            <div style="padding:var(--space-4); background:var(--color-surface-alt); border-radius:var(--radius-lg); text-align:center;">
+              <div style="font-size:1.5rem; margin-bottom:var(--space-2);">🔥</div>
+              <strong style="font-size:var(--font-size-sm);">Firebase Auth</strong>
+              <p class="text-muted" style="font-size:var(--font-size-xs); margin-top:var(--space-1);">Secure Authentication</p>
+            </div>
+            <div style="padding:var(--space-4); background:var(--color-surface-alt); border-radius:var(--radius-lg); text-align:center;">
+              <div style="font-size:1.5rem; margin-bottom:var(--space-2);">🗄️</div>
+              <strong style="font-size:var(--font-size-sm);">Cloud Firestore</strong>
+              <p class="text-muted" style="font-size:var(--font-size-xs); margin-top:var(--space-1);">Real-time Database</p>
+            </div>
+            <div style="padding:var(--space-4); background:var(--color-surface-alt); border-radius:var(--radius-lg); text-align:center;">
+              <div style="font-size:1.5rem; margin-bottom:var(--space-2);">🌐</div>
+              <strong style="font-size:var(--font-size-sm);">Firebase Hosting</strong>
+              <p class="text-muted" style="font-size:var(--font-size-xs); margin-top:var(--space-1);">Global CDN + HTTPS</p>
+            </div>
+            <div style="padding:var(--space-4); background:var(--color-surface-alt); border-radius:var(--radius-lg); text-align:center;">
+              <div style="font-size:1.5rem; margin-bottom:var(--space-2);">⚡</div>
+              <strong style="font-size:var(--font-size-sm);">Vanilla JS</strong>
+              <p class="text-muted" style="font-size:var(--font-size-xs); margin-top:var(--space-1);">ES Modules, No Frameworks</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:var(--space-8);">
+          <h2 style="font-size:var(--font-size-2xl); font-weight:700; margin-bottom:var(--space-4); color:var(--color-primary);">SEPM Project</h2>
+          <p style="color:var(--color-text-secondary); line-height:1.8;">
+            Built as part of the Software Engineering & Project Management course at SRM Institute of Science and Technology. This project demonstrates modern software engineering practices including proper authentication, role-based access control, normalized database design, and cloud deployment.
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { onAuth, getUserProfile } from '/js/auth.js';
+
+    renderFooter();
+    onAuth(async (user) => {
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          renderHeader(user, profile.role, 'about');
+        } catch { renderHeader(null, null, 'about'); }
+      } else {
+        renderHeader(null, null, 'about');
+      }
+    });
+  </script>
+
+</body>
+</html>

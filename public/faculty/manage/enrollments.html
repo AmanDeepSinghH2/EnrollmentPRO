@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Enrollments — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Enrollment Management</h1>
+      </div>
+
+      <div class="form-card mb-8 animate-fade-in-up">
+        <h2 style="font-size:var(--font-size-lg); font-weight:700; margin-bottom:var(--space-5);">Add New Enrollment</h2>
+        <form id="add-form">
+          <div class="form-group">
+            <label for="studentId" class="form-label form-label--required">Student</label>
+            <select id="studentId" class="form-select" required>
+              <option value="">Select Student</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="courseId" class="form-label form-label--required">Course</label>
+            <select id="courseId" class="form-select" required>
+              <option value="">Select Course</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" class="form-select">
+              <option value="Pending">Pending</option>
+              <option value="Enrolled">Enrolled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="enrollmentDate" class="form-label">Enrollment Date</label>
+            <input type="date" id="enrollmentDate" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label for="semester" class="form-label">Semester</label>
+            <select id="semester" class="form-select">
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Add Enrollment</button>
+        </form>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">📝 All Enrollments</div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr><th>Student</th><th>Course</th><th>Status</th><th>Semester</th><th>Date</th><th>Action</th></tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="6" class="table-empty">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, where }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { addCell, addBadgeCell, formatDate } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', '');
+
+    const tbody = document.getElementById('table-body');
+    const form = document.getElementById('add-form');
+
+    // Populate student select
+    const studentsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+    const studentsMap = {};
+    const studentSelect = document.getElementById('studentId');
+    studentsSnap.forEach(d => {
+      studentsMap[d.id] = d.data().name;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = `${d.data().name} (${d.data().email})`;
+      studentSelect.appendChild(opt);
+    });
+
+    // Populate course select
+    const coursesSnap = await getDocs(collection(db, 'courses'));
+    const coursesMap = {};
+    const courseSelect = document.getElementById('courseId');
+    coursesSnap.forEach(d => {
+      coursesMap[d.id] = d.data().name;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.data().name;
+      courseSelect.appendChild(opt);
+    });
+
+    // Set default date
+    document.getElementById('enrollmentDate').valueAsDate = new Date();
+
+    async function loadData() {
+      const snap = await getDocs(collection(db, 'enrollments'));
+      tbody.innerHTML = '';
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No enrollments yet.</td></tr>'; return; }
+      snap.forEach(d => {
+        const data = d.data();
+        const tr = document.createElement('tr');
+        addCell(tr, studentsMap[data.studentId] || data.studentId);
+        addCell(tr, coursesMap[data.courseId] || data.courseId);
+        addBadgeCell(tr, data.status, data.status === 'Enrolled' ? 'success' : 'warning');
+        addCell(tr, data.semester || '—');
+        addCell(tr, formatDate(data.enrollmentDate));
+
+        const actionTd = document.createElement('td');
+        actionTd.style.display = 'flex';
+        actionTd.style.gap = 'var(--space-2)';
+
+        // Toggle status button
+        if (data.status === 'Pending') {
+          const approveBtn = document.createElement('button');
+          approveBtn.className = 'btn btn-primary btn-sm';
+          approveBtn.textContent = 'Approve';
+          approveBtn.addEventListener('click', async () => {
+            await updateDoc(doc(db, 'enrollments', d.id), { status: 'Enrolled' });
+            showToast('Enrollment approved!', 'success');
+            loadData();
+          });
+          actionTd.appendChild(approveBtn);
+        }
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger btn-sm';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', async () => {
+          if (confirm('Delete this enrollment?')) {
+            await deleteDoc(doc(db, 'enrollments', d.id));
+            showToast('Enrollment deleted', 'success');
+            loadData();
+          }
+        });
+        actionTd.appendChild(delBtn);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const studentId = studentSelect.value;
+      const courseId = courseSelect.value;
+      const status = document.getElementById('status').value;
+      const enrollmentDate = document.getElementById('enrollmentDate').value || new Date().toISOString().split('T')[0];
+      const semester = document.getElementById('semester').value;
+      if (!studentId || !courseId) return;
+      try {
+        await addDoc(collection(db, 'enrollments'), { studentId, courseId, status, enrollmentDate, semester, createdAt: new Date().toISOString() });
+        showToast('Enrollment added!', 'success');
+        form.reset();
+        document.getElementById('enrollmentDate').valueAsDate = new Date();
+        loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    loadData();
+  </script>
+
+</body>
+</html>

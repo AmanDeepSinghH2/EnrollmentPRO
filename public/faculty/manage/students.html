@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Students — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Student Management</h1>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">
+          <span>📋 All Students</span>
+          <span class="badge badge-info" id="count-badge">—</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Semester</th>
+                <th>DOB</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="6" class="table-empty">Loading students...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, query, where, getDocs }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { addCell, formatDate, formatPhone } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', '');
+
+    const tbody = document.getElementById('table-body');
+
+    try {
+      const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+      tbody.innerHTML = '';
+      document.getElementById('count-badge').textContent = `${snap.size} students`;
+
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No students registered yet.</td></tr>';
+        return;
+      }
+
+      snap.forEach(d => {
+        const data = d.data();
+        const tr = document.createElement('tr');
+        addCell(tr, data.name);
+        addCell(tr, data.email);
+        addCell(tr, formatPhone(data.phone));
+        addCell(tr, data.semester ? `Sem ${data.semester}` : '—');
+        addCell(tr, formatDate(data.dob));
+        addCell(tr, data.address);
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = '<tr><td colspan="6" class="table-empty text-error">Failed to load students.</td></tr>';
+    }
+  </script>
+
+</body>
+</html>

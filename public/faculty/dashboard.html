@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Faculty Dashboard — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="dashboard-header animate-fade-in-up">
+        <h1 class="dashboard-title">Welcome, <span id="faculty-name" class="text-primary">...</span></h1>
+        <p class="dashboard-subtitle">Faculty Management Console</p>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="grid-4 mb-8 stagger">
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-courses">—</div>
+          <div class="stat-label">My Courses</div>
+        </div>
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-students">—</div>
+          <div class="stat-label">Total Students</div>
+        </div>
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-enrollments">—</div>
+          <div class="stat-label">Enrollments</div>
+        </div>
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-pending">—</div>
+          <div class="stat-label">Pending</div>
+        </div>
+      </div>
+
+      <!-- Profile + Courses -->
+      <div class="grid-2 mb-8 stagger">
+        <div class="card animate-fade-in-up">
+          <div class="card-header">👤 My Profile</div>
+          <div class="card-body" style="display:flex; align-items:center; gap:var(--space-5);">
+            <div class="profile-avatar" id="profile-avatar">?</div>
+            <div>
+              <div class="profile-name" id="profile-fullname">Loading...</div>
+              <div class="profile-role">Faculty · Computer Science</div>
+              <div class="profile-id" id="profile-email">—</div>
+              <div style="margin-top:var(--space-2); font-size:var(--font-size-sm); color:var(--color-text-muted);">
+                📞 <span id="profile-phone">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card animate-fade-in-up">
+          <div class="card-header">📚 Courses Teaching</div>
+          <div class="card-body">
+            <ul id="courses-list" style="list-style:none; display:flex; flex-direction:column; gap:var(--space-3);">
+              <li class="skeleton skeleton-text" style="height:2.5rem;"></li>
+              <li class="skeleton skeleton-text" style="height:2.5rem;"></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Management Tools Grid -->
+      <h2 style="font-size:var(--font-size-xl); font-weight:700; margin-bottom:var(--space-4);">Management Tools</h2>
+      <div class="grid-4 stagger">
+        <a href="/faculty/manage/students.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">📋</div>
+          <div class="action-card-title">Students</div>
+        </a>
+        <a href="/faculty/manage/faculty-list.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">👨‍🏫</div>
+          <div class="action-card-title">Faculty</div>
+        </a>
+        <a href="/faculty/manage/courses.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">📚</div>
+          <div class="action-card-title">Courses</div>
+        </a>
+        <a href="/faculty/manage/course-faculty.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">🔗</div>
+          <div class="action-card-title">Course-Faculty</div>
+        </a>
+        <a href="/faculty/manage/enrollments.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">📝</div>
+          <div class="action-card-title">Enrollments</div>
+        </a>
+        <a href="/faculty/manage/grades.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">🎓</div>
+          <div class="action-card-title">Grades</div>
+        </a>
+        <a href="/faculty/manage/student-parents.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">👪</div>
+          <div class="action-card-title">Student Parents</div>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, query, where, getDocs, doc, getDoc }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getInitials, formatPhone } from '/js/utils.js';
+
+    renderFooter();
+    const { user, profile } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', 'dashboard');
+
+    // Profile
+    document.getElementById('faculty-name').textContent = profile.name || 'Faculty';
+    document.getElementById('profile-fullname').textContent = profile.name || '—';
+    document.getElementById('profile-avatar').textContent = getInitials(profile.name);
+    document.getElementById('profile-email').textContent = profile.email || '—';
+    document.getElementById('profile-phone').textContent = formatPhone(profile.phone);
+
+    // Stats
+    try {
+      // My courses
+      const cfSnap = await getDocs(query(collection(db, 'courseFaculty'), where('facultyId', '==', user.uid)));
+      document.getElementById('stat-courses').textContent = cfSnap.size;
+
+      // Course names
+      const coursesList = document.getElementById('courses-list');
+      coursesList.innerHTML = '';
+      if (cfSnap.empty) {
+        coursesList.innerHTML = '<li class="text-muted" style="text-align:center; padding:var(--space-4);">No courses assigned yet</li>';
+      } else {
+        for (const d of cfSnap.docs) {
+          const courseDoc = await getDoc(doc(db, 'courses', d.data().courseId));
+          const li = document.createElement('li');
+          li.style.cssText = 'padding:var(--space-3) var(--space-4); background:var(--color-surface-alt); border-radius:var(--radius-md); font-weight:500; font-size:var(--font-size-sm);';
+          li.textContent = courseDoc.exists() ? courseDoc.data().name : 'Unknown Course';
+          coursesList.appendChild(li);
+        }
+      }
+
+      // Total students
+      const studentsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+      document.getElementById('stat-students').textContent = studentsSnap.size;
+
+      // Total enrollments & pending
+      const enrollSnap = await getDocs(collection(db, 'enrollments'));
+      document.getElementById('stat-enrollments').textContent = enrollSnap.size;
+      let pending = 0;
+      enrollSnap.forEach(d => { if (d.data().status === 'Pending') pending++; });
+      document.getElementById('stat-pending').textContent = pending;
+      if (pending > 0) document.getElementById('stat-pending').style.color = 'var(--color-warning)';
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+    }
+  </script>
+
+</body>
+</html>
