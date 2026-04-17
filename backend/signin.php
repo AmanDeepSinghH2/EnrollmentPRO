@@ -1,4 +1,5 @@
 <?php
+session_start();
 header('Content-Type: application/json');
 include 'db_connection.php';
 
@@ -56,8 +57,10 @@ if ($stmt->num_rows === 1) {
     $stmt->close();
     $conn->close();
 
-    // Redirect to faculty dashboard
-    header('Location: ../faculty dashbord.html');
+    echo json_encode([
+        'message' => 'Login successful',
+        'user' => $_SESSION['user']
+    ]);
     exit;
 }
 
@@ -93,8 +96,10 @@ if ($stmt->num_rows === 1) {
     $stmt->close();
     $conn->close();
 
-    // Redirect to student dashboard
-    header('Location: ../student dashbord.html');
+    echo json_encode([
+        'message' => 'Login successful',
+        'user' => $_SESSION['user']
+    ]);
     exit;
 }
 
