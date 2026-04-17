@@ -14,23 +14,36 @@
       fetch('backend/student_dashboard_data.php')
         .then(response => response.json())
         .then(data => {
+          if (data.error) throw new Error(data.error);
+
           document.getElementById('studentName').textContent = data.user.name;
-          document.getElementById('studentID').textContent = data.user.userID;
+          document.getElementById('studentID').textContent = 'ID: ' + data.user.userID;
 
           const coursesList = document.getElementById('coursesList');
-          data.courses.forEach(course => {
+          coursesList.innerHTML = ''; // Clear loading state
+          
+          if (data.courses && data.courses.length > 0) {
+            data.courses.forEach(course => {
+              const li = document.createElement('li');
+              li.className = "bg-[white] bg-opacity-100 rounded-md px-4 py-2 font-semibold shadow-[#14b8a6]";
+              li.textContent = course.course_name;
+              coursesList.appendChild(li);
+            });
+          } else {
             const li = document.createElement('li');
-            li.className = "bg-[white] bg-opacity-100 rounded-md px-4 py-2 font-semibold shadow-[#14b8a6]";
-            li.textContent = course.course_name;
+            li.className = "bg-gray-100 rounded-md px-4 py-2 text-gray-500 italic";
+            li.textContent = "No courses enrolled";
             coursesList.appendChild(li);
-          });
+          }
 
-          document.getElementById('semester').textContent = data.enrollment.semester || 'N/A';
-          document.getElementById('enrollmentStatus').textContent = data.enrollment.enrollment_status || 'N/A';
-          document.getElementById('validTill').textContent = data.enrollment.valid_till || 'N/A';
+          const enrollment = data.enrollment || {};
+          document.getElementById('semester').textContent = enrollment.semester || 'N/A';
+          document.getElementById('enrollmentStatus').textContent = enrollment.enrollment_status || 'N/A';
+          document.getElementById('validTill').textContent = enrollment.valid_till || 'N/A';
         })
         .catch(error => {
           console.error('Error fetching student dashboard data:', error);
+          document.getElementById('studentName').textContent = 'Error loading data';
         });
     });
   </script>
