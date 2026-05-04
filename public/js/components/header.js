@@ -23,7 +23,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
       <a href="/index.html" class="nav-link ${activePage === 'home' ? 'nav-link--active' : ''}">Home</a>
       <a href="/about.html" class="nav-link ${activePage === 'about' ? 'nav-link--active' : ''}">About</a>
       <a href="/auth/signin.html" class="nav-link ${activePage === 'signin' ? 'nav-link--active' : ''}">Sign In</a>
-      <a href="/auth/signup.html" class="nav-link nav-link--cta">Sign Up</a>
+      <a href="/auth/signup.html" class="nav-link nav-link--cta">Get Started</a>
     `;
   } else if (role === 'student') {
     navLinks = `
@@ -92,7 +92,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
     });
   }
 
-  // Bind mobile menu toggle
+  // Mobile menu toggle
   const mobileToggle = document.getElementById('mobile-menu-toggle');
   const headerNav = document.getElementById('header-nav');
   if (mobileToggle && headerNav) {

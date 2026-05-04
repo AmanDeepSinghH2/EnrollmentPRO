@@ -127,47 +127,43 @@
       roleFacultyBtn.classList.add('active');
       roleStudentBtn.classList.remove('active');
       facultyFields.classList.remove('hidden');
-      studentFields.classList.add('hidden');
     });
 
     // Form handling
-    const form = document.getElementById('signup-form');
-    const errorMsg = document.getElementById('error-msg');
+    const registerForm = document.getElementById('signup-form');
     const submitBtn = document.getElementById('submit-btn');
 
-    form.addEventListener('submit', async (e) => {
+    // Handle registration
+    registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      errorMsg.style.display = 'none';
+      
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const role = document.getElementById('signup-role').value;
+      const name = document.getElementById('signup-name').value.trim();
 
-      const username = document.getElementById('username').value.trim();
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const phone = document.getElementById('phone').value.trim();
-      const dob = document.getElementById('dob').value;
-      const role = roleInput.value;
-
-      if (!username || !name || !email || password.length < 6) {
-        errorMsg.textContent = 'Username, name, email, and password (min 6 chars) are required.';
-        errorMsg.style.display = 'block';
+      // Basic validation
+      if (!email || !password || !name) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+      }
+      if (password.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
         return;
       }
 
-      const profileData = { username, name, role, phone, dob };
-
-      if (role === 'student') {
-        profileData.address = document.getElementById('address').value.trim();
-        profileData.semester = parseInt(document.getElementById('semester').value) || 1;
-      }
-
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Creating account...';
-      submitBtn.classList.add('btn-loading');
+      submitBtn.innerHTML = '<span class="spinner"></span> Creating account...';
 
       try {
-        await signup(email, password, profileData);
-        showToast('Account created successfully!', 'success');
-
+        const { profile } = await register(email, password, role, name, {
+          createdAt: new Date().toISOString(),
+          status: 'Active'
+        });
+        
+        showToast(`Account created for ${profile.name}!`, 'success');
+        
+        // Redirect based on role
         setTimeout(() => {
           window.location.href = role === 'student'
             ? '/student/dashboard.html'

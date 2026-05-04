@@ -54,43 +54,42 @@
     await redirectIfAuth();
 
     // Form handling
-    const form = document.getElementById('signin-form');
-    const errorMsg = document.getElementById('error-msg');
+    const loginForm = document.getElementById('signin-form');
     const submitBtn = document.getElementById('submit-btn');
 
-    form.addEventListener('submit', async (e) => {
+    // Handle login
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      errorMsg.style.display = 'none';
+      
+      const email = document.getElementById('login-id').value.trim();
+      const password = document.getElementById('login-password').value;
 
-      const loginId = document.getElementById('login-id').value.trim();
-      const password = form.password.value;
-
-      if (!loginId || password.length < 6) {
-        errorMsg.textContent = 'Please enter your username/email and password.';
-        errorMsg.style.display = 'block';
+      if (!email || !password) {
+        showToast('Please enter both email and password', 'error');
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Signing in...';
-      submitBtn.classList.add('btn-loading');
+      submitBtn.innerHTML = '<span class="spinner"></span> Signing in...';
 
       try {
-        const result = await signin(loginId, password);
-        const role = result.user.role;
-        showToast('Welcome back!', 'success');
-
+        const { profile } = await login(email, password);
+        showToast(`Welcome back, ${profile.name}!`, 'success');
+        
+        // Redirect based on role
         setTimeout(() => {
-          window.location.href = role === 'student'
-            ? '/student/dashboard.html'
-            : '/faculty/dashboard.html';
-        }, 500);
+          if (profile.role === 'student') window.location.href = '/student/dashboard.html';
+          else if (profile.role === 'faculty') window.location.href = '/faculty/dashboard.html';
+          else if (profile.role === 'admin') window.location.href = '/admin/dashboard.html';
+        }, 1000);
       } catch (err) {
-        errorMsg.textContent = getFriendlyError(err);
-        errorMsg.style.display = 'block';
+        console.error(err);
+        let msg = 'Failed to sign in. Please check your credentials.';
+        if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
+        if (err.code === 'auth/wrong-password') msg = 'Incorrect password.';
+        showToast(msg, 'error');
         submitBtn.disabled = false;
         submitBtn.textContent = 'Sign In';
-        submitBtn.classList.remove('btn-loading');
       }
     });
   </script>

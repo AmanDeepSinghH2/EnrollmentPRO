@@ -1,102 +1,104 @@
 // =====================================================================
-// EnrollmentPRO — Authentication Module (Flask + MySQL)
+// EnrollmentPRO — Authentication Module (Firebase Edition)
 // =====================================================================
 
-const API_BASE_URL = 'http://localhost:5000/auth';
+import { auth, db } from './firebase-config.js';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { 
+  doc, 
+  setDoc, 
+  getDoc 
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 /**
- * Sign up a new user via Flask API.
- * @param {string} email
- * @param {string} password
- * @param {object} profileData — { username, name, role }
+ * Register a new user and create their profile in Firestore.
  */
-export async function signup(email, password, profileData) {
-  const response = await fetch(`${API_BASE_URL}/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email,
-      password,
-      username: profileData.username,
-      name: profileData.name,
-      role: profileData.role
-    })
-  });
-
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Registration failed');
-  return result;
-}
-
-/**
- * Sign in an existing user via Flask API.
- * @param {string} username
- * @param {string} password
- */
-export async function signin(username, password) {
-  const response = await fetch(`${API_BASE_URL}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Login failed');
-  
-  // Store user in localStorage for persistence (simplified session)
-  localStorage.setItem('user', JSON.stringify(result.user));
-  return result;
-}
-
-/**
- * Sign out the current user.
- */
-export async function logout() {
-  const response = await fetch(`${API_BASE_URL}/logout`, {
-    method: 'POST'
-  });
-  localStorage.removeItem('user');
-  return response.json();
-}
-
-/**
- * Verify session with the server.
- */
-export async function checkAuth() {
+export async function register(email, password, role, name, extraData = {}) {
   try {
-    const response = await fetch(`${API_BASE_URL}/me`);
-    if (!response.ok) {
-      localStorage.removeItem('user');
-      return null;
-    }
-    const user = await response.json();
-    localStorage.setItem('user', JSON.stringify(user));
-    return user;
-  } catch (err) {
-    localStorage.removeItem('user');
-    return null;
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Create profile in Firestore
+    const profile = {
+      uid: user.uid,
+      email: email,
+      role: role,
+      name: name,
+      createdAt: new Date().toISOString(),
+      ...extraData
+    };
+
+    await setDoc(doc(db, 'users', user.uid), profile);
+    return { user, profile };
+  } catch (error) {
+    console.error('Registration error:', error);
+    throw error;
   }
 }
 
 /**
- * Get the current user from localStorage.
+ * Log in an existing user.
+ */
+export async function login(email, password) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    // Fetch profile to get role
+    const profile = await getUserProfile(user.uid);
+    return { user, profile };
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Log out the current user.
+ */
+export async function logout() {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error('Logout error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user profile from Firestore.
+ */
+export async function getUserProfile(uid) {
+  const docRef = doc(db, 'users', uid);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    return docSnap.data();
+  } else {
+    throw new Error('No such profile!');
+  }
+}
+
+/**
+ * Real-time listener for auth state changes.
+ */
+export function onAuth(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+/**
+ * Get the currently logged in user (Promise based).
  */
 export function getCurrentUser() {
-  const user = localStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
-}
-
-/**
- * Check if the user is authenticated (via local state).
- */
-export function isAuthenticated() {
-  return !!localStorage.getItem('user');
-}
-
-/**
- * Get the role of the current user.
- */
-export function getUserRole() {
-  const user = getCurrentUser();
-  return user ? user.role : null;
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe();
+      resolve(user);
+    }, reject);
+  });
 }

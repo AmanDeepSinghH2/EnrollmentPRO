@@ -112,18 +112,24 @@
   <script type="module">
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
-    import { checkAuth } from '/js/auth.js';
+    import { onAuth, getUserProfile } from '/js/auth.js';
 
     // Render footer immediately
     renderFooter();
 
     // Render header based on auth state
-    const user = await checkAuth();
-    if (user) {
-      renderHeader(user, user.Role.toLowerCase(), 'home');
-    } else {
-      renderHeader(null, null, 'home');
-    }
+    onAuth(async (user) => {
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          renderHeader(user, profile.role, 'home');
+        } catch {
+          renderHeader(null, null, 'home');
+        }
+      } else {
+        renderHeader(null, null, 'home');
+      }
+    });
   </script>
 
 </body>
