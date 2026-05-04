@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>graphify - graphify-out\graph.html</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f1a; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  #graph { flex: 1; }
+  #sidebar { width: 280px; background: #1a1a2e; border-left: 1px solid #2a2a4e; display: flex; flex-direction: column; overflow: hidden; }
+  #search-wrap { padding: 12px; border-bottom: 1px solid #2a2a4e; }
+  #search { width: 100%; background: #0f0f1a; border: 1px solid #3a3a5e; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font-size: 13px; outline: none; }
+  #search:focus { border-color: #4E79A7; }
+  #search-results { max-height: 140px; overflow-y: auto; padding: 4px 12px; border-bottom: 1px solid #2a2a4e; display: none; }
+  .search-item { padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search-item:hover { background: #2a2a4e; }
+  #info-panel { padding: 14px; border-bottom: 1px solid #2a2a4e; min-height: 140px; }
+  #info-panel h3 { font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  #info-content { font-size: 13px; color: #ccc; line-height: 1.6; }
+  #info-content .field { margin-bottom: 5px; }
+  #info-content .field b { color: #e0e0e0; }
+  #info-content .empty { color: #555; font-style: italic; }
+  .neighbor-link { display: block; padding: 2px 6px; margin: 2px 0; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid #333; }
+  .neighbor-link:hover { background: #2a2a4e; }
+  #neighbors-list { max-height: 160px; overflow-y: auto; margin-top: 4px; }
+  #legend-wrap { flex: 1; overflow-y: auto; padding: 12px; }
+  #legend-wrap h3 { font-size: 13px; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 4px; font-size: 12px; }
+  .legend-item:hover { background: #2a2a4e; padding-left: 4px; }
+  .legend-item.dimmed { opacity: 0.35; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend-count { color: #666; font-size: 11px; }
+  #stats { padding: 10px 14px; border-top: 1px solid #2a2a4e; font-size: 11px; color: #555; }
+  #legend-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 4px 0; }
+  #legend-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: #aaa; user-select: none; }
+  #legend-controls label:hover { color: #e0e0e0; }
+  .legend-cb, #select-all-cb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 1.5px solid #3a3a5e; border-radius: 3px; background: #0f0f1a; cursor: pointer; position: relative; flex-shrink: 0; }
+  .legend-cb:checked, #select-all-cb:checked { background: #4E79A7; border-color: #4E79A7; }
+  .legend-cb:checked::after, #select-all-cb:checked::after { content: ''; position: absolute; left: 3.5px; top: 1px; width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  #select-all-cb:indeterminate { background: #4E79A7; border-color: #4E79A7; }
+  #select-all-cb:indeterminate::after { content: ''; position: absolute; left: 2px; top: 5px; width: 8px; height: 2px; background: #fff; border: none; transform: none; }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div id="sidebar">
+  <div id="search-wrap">
+    <input id="search" type="text" placeholder="Search nodes..." autocomplete="off">
+    <div id="search-results"></div>
+  </div>
+  <div id="info-panel">
+    <h3>Node Info</h3>
+    <div id="info-content"><span class="empty">Click a node to inspect it</span></div>
+  </div>
+  <div id="legend-wrap">
+    <h3>Communities</h3>
+    <div id="legend-controls">
+      <label><input type="checkbox" id="select-all-cb" checked onchange="toggleAllCommunities(!this.checked)">Select All</label>
+    </div>
+    <div id="legend"></div>
+  </div>
+  <div id="stats">51 nodes &middot; 47 edges &middot; 13 communities</div>
+</div>
+<script>
+const RAW_NODES = [{"id": "auth_js", "label": "auth.js", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 30.0, "font": {"size": 12, "color": "#ffffff"}, "title": "auth.js", "community": 4, "community_name": "Authentication", "source_file": "auth.js", "file_type": "code", "degree": 6}, {"id": "js_auth_signup", "label": "signup()", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "signup()", "community": 4, "community_name": "Authentication", "source_file": "auth.js", "file_type": "code", "degree": 1}, {"id": "js_auth_signin", "label": "signin()", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "signin()", "community": 4, "community_name": "Authentication", "source_file": "auth.js", "file_type": "code", "degree": 1}, {"id": "js_auth_logout", "label": "logout()", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "logout()", "community": 3, "community_name": "UI Components", "source_file": "auth.js", "file_type": "code", "degree": 2}, {"id": "js_auth_getuserrole", "label": "getUserRole()", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "getUserRole()", "community": 4, "community_name": "Authentication", "source_file": "auth.js", "file_type": "code", "degree": 1}, {"id": "js_auth_getuserprofile", "label": "getUserProfile()", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "getUserProfile()", "community": 4, "community_name": "Authentication", "source_file": "auth.js", "file_type": "code", "degree": 1}, {"id": "js_auth_onauth", "label": "onAuth()", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "onAuth()", "community": 4, "community_name": "Authentication", "source_file": "auth.js", "file_type": "code", "degree": 1}, {"id": "firebase_config_js", "label": "firebase-config.js", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "firebase-config.js", "community": 7, "community_name": "Firebase Config", "source_file": "firebase-config.js", "file_type": "code", "degree": 0}, {"id": "guards_js", "label": "guards.js", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "guards.js", "community": 5, "community_name": "Route Guards", "source_file": "guards.js", "file_type": "code", "degree": 2}, {"id": "js_guards_requireauth", "label": "requireAuth()", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "requireAuth()", "community": 5, "community_name": "Route Guards", "source_file": "guards.js", "file_type": "code", "degree": 1}, {"id": "js_guards_redirectifauth", "label": "redirectIfAuth()", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "redirectIfAuth()", "community": 5, "community_name": "Route Guards", "source_file": "guards.js", "file_type": "code", "degree": 1}, {"id": "utils_js", "label": "utils.js", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 40.0, "font": {"size": 12, "color": "#ffffff"}, "title": "utils.js", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 9}, {"id": "js_utils_sanitize", "label": "sanitize()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "sanitize()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_formatdate", "label": "formatDate()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "formatDate()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_formatphone", "label": "formatPhone()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "formatPhone()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_debounce", "label": "debounce()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "debounce()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_getinitials", "label": "getInitials()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "getInitials()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_capitalize", "label": "capitalize()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "capitalize()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_getfriendlyerror", "label": "getFriendlyError()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "getFriendlyError()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_addcell", "label": "addCell()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "addCell()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "js_utils_addbadgecell", "label": "addBadgeCell()", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "addBadgeCell()", "community": 0, "community_name": "Utilities & Formatting", "source_file": "utils.js", "file_type": "code", "degree": 1}, {"id": "components_footer_js", "label": "footer.js", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "footer.js", "community": 6, "community_name": "Footer Component", "source_file": "components/footer.js", "file_type": "code", "degree": 1}, {"id": "components_footer_renderfooter", "label": "renderFooter()", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "renderFooter()", "community": 6, "community_name": "Footer Component", "source_file": "components/footer.js", "file_type": "code", "degree": 1}, {"id": "components_header_js", "label": "header.js", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 20.0, "font": {"size": 12, "color": "#ffffff"}, "title": "header.js", "community": 3, "community_name": "UI Components", "source_file": "components/header.js", "file_type": "code", "degree": 3}, {"id": "components_header_renderheader", "label": "renderHeader()", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "renderHeader()", "community": 3, "community_name": "UI Components", "source_file": "components/header.js", "file_type": "code", "degree": 1}, {"id": "components_toast_js", "label": "toast.js", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 20.0, "font": {"size": 12, "color": "#ffffff"}, "title": "toast.js", "community": 3, "community_name": "UI Components", "source_file": "components/toast.js", "file_type": "code", "degree": 3}, {"id": "components_toast_ensurecontainer", "label": "ensureContainer()", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "ensureContainer()", "community": 3, "community_name": "UI Components", "source_file": "components/toast.js", "file_type": "code", "degree": 2}, {"id": "components_toast_showtoast", "label": "showToast()", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 20.0, "font": {"size": 12, "color": "#ffffff"}, "title": "showToast()", "community": 3, "community_name": "UI Components", "source_file": "components/toast.js", "file_type": "code", "degree": 3}, {"id": "components_toast_dismisstoast", "label": "dismissToast()", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "dismissToast()", "community": 3, "community_name": "UI Components", "source_file": "components/toast.js", "file_type": "code", "degree": 1}, {"id": "about", "label": "about.html", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "about.html", "community": 8, "community_name": "About Page", "source_file": "public/about.html", "file_type": "document", "degree": 0}, {"id": "index", "label": "index.html", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "index.html", "community": 9, "community_name": "Landing Page", "source_file": "public/index.html", "file_type": "document", "degree": 0}, {"id": "maintenance", "label": "maintenance.html", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "maintenance.html", "community": 10, "community_name": "Maintenance Page", "source_file": "public/maintenance.html", "file_type": "document", "degree": 0}, {"id": "signin", "label": "signin.html", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "signin.html", "community": 11, "community_name": "Sign In Page", "source_file": "public/auth/signin.html", "file_type": "document", "degree": 0}, {"id": "signup", "label": "signup.html", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "signup.html", "community": 12, "community_name": "Sign Up Page", "source_file": "public/auth/signup.html", "file_type": "document", "degree": 0}, {"id": "dashboard", "label": "dashboard.html", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 20.0, "font": {"size": 12, "color": "#ffffff"}, "title": "dashboard.html", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/dashboard.html", "file_type": "document", "degree": 3}, {"id": "collection_courseFaculty", "label": "Firestore: courseFaculty", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "Firestore: courseFaculty", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/dashboard.html", "file_type": "code", "degree": 2}, {"id": "collection_users", "label": "Firestore: users", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 33.3, "font": {"size": 12, "color": "#ffffff"}, "title": "Firestore: users", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/dashboard.html", "file_type": "code", "degree": 7}, {"id": "collection_enrollments", "label": "Firestore: enrollments", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 26.7, "font": {"size": 12, "color": "#ffffff"}, "title": "Firestore: enrollments", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/faculty/dashboard.html", "file_type": "code", "degree": 5}, {"id": "course_faculty", "label": "course-faculty.html", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 20.0, "font": {"size": 12, "color": "#ffffff"}, "title": "course-faculty.html", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/manage/course-faculty.html", "file_type": "document", "degree": 3}, {"id": "collection_courses", "label": "Firestore: courses", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 26.7, "font": {"size": 12, "color": "#ffffff"}, "title": "Firestore: courses", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/faculty/manage/course-faculty.html", "file_type": "code", "degree": 5}, {"id": "courses", "label": "courses.html", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "courses.html", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/faculty/manage/courses.html", "file_type": "document", "degree": 1}, {"id": "enrollments", "label": "enrollments.html", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 20.0, "font": {"size": 12, "color": "#ffffff"}, "title": "enrollments.html", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/faculty/manage/enrollments.html", "file_type": "document", "degree": 3}, {"id": "faculty_list", "label": "faculty-list.html", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "faculty-list.html", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/manage/faculty-list.html", "file_type": "document", "degree": 1}, {"id": "grades", "label": "grades.html", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 20.0, "font": {"size": 12, "color": "#ffffff"}, "title": "grades.html", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/faculty/manage/grades.html", "file_type": "document", "degree": 3}, {"id": "collection_grades", "label": "Firestore: grades", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "Firestore: grades", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/faculty/manage/grades.html", "file_type": "code", "degree": 2}, {"id": "student_parents", "label": "student-parents.html", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "student-parents.html", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/manage/student-parents.html", "file_type": "document", "degree": 2}, {"id": "collection_studentParents", "label": "Firestore: studentParents", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Firestore: studentParents", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/manage/student-parents.html", "file_type": "code", "degree": 1}, {"id": "students", "label": "students.html", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "students.html", "community": 2, "community_name": "Faculty & User Management", "source_file": "public/faculty/manage/students.html", "file_type": "document", "degree": 1}, {"id": "browse_courses", "label": "browse-courses.html", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "browse-courses.html", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/student/browse-courses.html", "file_type": "document", "degree": 2}, {"id": "enrollment_status", "label": "enrollment-status.html", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 13.3, "font": {"size": 0, "color": "#ffffff"}, "title": "enrollment-status.html", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/student/enrollment-status.html", "file_type": "document", "degree": 1}, {"id": "my_courses", "label": "my-courses.html", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.7, "font": {"size": 12, "color": "#ffffff"}, "title": "my-courses.html", "community": 1, "community_name": "Course & Enrollment Flow", "source_file": "public/student/my-courses.html", "file_type": "document", "degree": 2}];
+const RAW_EDGES = [{"from": "auth_js", "to": "js_auth_signup", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "auth_js", "to": "js_auth_signin", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "auth_js", "to": "js_auth_logout", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "auth_js", "to": "js_auth_getuserrole", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "auth_js", "to": "js_auth_getuserprofile", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "auth_js", "to": "js_auth_onauth", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_auth_logout", "to": "components_header_js", "label": "imports", "title": "imports [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "guards_js", "to": "js_guards_requireauth", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "guards_js", "to": "js_guards_redirectifauth", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_sanitize", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_formatdate", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_formatphone", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_debounce", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_getinitials", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_capitalize", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_getfriendlyerror", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_addcell", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "utils_js", "to": "js_utils_addbadgecell", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "components_footer_js", "to": "components_footer_renderfooter", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "components_header_js", "to": "components_toast_showtoast", "label": "imports", "title": "imports [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "components_header_js", "to": "components_header_renderheader", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "components_toast_js", "to": "components_toast_ensurecontainer", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "components_toast_js", "to": "components_toast_showtoast", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "components_toast_js", "to": "components_toast_dismisstoast", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "components_toast_ensurecontainer", "to": "components_toast_showtoast", "label": "calls", "title": "calls [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "dashboard", "to": "collection_courseFaculty", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "dashboard", "to": "collection_users", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "dashboard", "to": "collection_enrollments", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_courseFaculty", "to": "course_faculty", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_users", "to": "course_faculty", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_users", "to": "enrollments", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_users", "to": "faculty_list", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_users", "to": "grades", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_users", "to": "student_parents", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_users", "to": "students", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_enrollments", "to": "enrollments", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_enrollments", "to": "browse_courses", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_enrollments", "to": "enrollment_status", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_enrollments", "to": "my_courses", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "course_faculty", "to": "collection_courses", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_courses", "to": "courses", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_courses", "to": "enrollments", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_courses", "to": "grades", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_courses", "to": "browse_courses", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "grades", "to": "collection_grades", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "collection_grades", "to": "my_courses", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "student_parents", "to": "collection_studentParents", "label": "reads_writes", "title": "reads_writes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}];
+const LEGEND = [{"cid": 0, "color": "#4E79A7", "label": "Utilities &amp; Formatting", "count": 10}, {"cid": 1, "color": "#F28E2B", "label": "Course &amp; Enrollment Flow", "count": 9}, {"cid": 2, "color": "#E15759", "label": "Faculty &amp; User Management", "count": 8}, {"cid": 3, "color": "#76B7B2", "label": "UI Components", "count": 7}, {"cid": 4, "color": "#59A14F", "label": "Authentication", "count": 6}, {"cid": 5, "color": "#EDC948", "label": "Route Guards", "count": 3}, {"cid": 6, "color": "#B07AA1", "label": "Footer Component", "count": 2}, {"cid": 7, "color": "#FF9DA7", "label": "Firebase Config", "count": 1}, {"cid": 8, "color": "#9C755F", "label": "About Page", "count": 1}, {"cid": 9, "color": "#BAB0AC", "label": "Landing Page", "count": 1}, {"cid": 10, "color": "#4E79A7", "label": "Maintenance Page", "count": 1}, {"cid": 11, "color": "#F28E2B", "label": "Sign In Page", "count": 1}, {"cid": 12, "color": "#E15759", "label": "Sign Up Page", "count": 1}];
+
+// HTML-escape helper — prevents XSS when injecting graph data into innerHTML
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Build vis datasets
+const nodesDS = new vis.DataSet(RAW_NODES.map(n => ({
+  id: n.id, label: n.label, color: n.color, size: n.size,
+  font: n.font, title: n.title,
+  _community: n.community, _community_name: n.community_name,
+  _source_file: n.source_file, _file_type: n.file_type, _degree: n.degree,
+})));
+
+const edgesDS = new vis.DataSet(RAW_EDGES.map((e, i) => ({
+  id: i, from: e.from, to: e.to,
+  label: '',
+  title: e.title,
+  dashes: e.dashes,
+  width: e.width,
+  color: e.color,
+  arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+})));
+
+const container = document.getElementById('graph');
+const network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
+  physics: {
+    enabled: true,
+    solver: 'forceAtlas2Based',
+    forceAtlas2Based: {
+      gravitationalConstant: -60,
+      centralGravity: 0.005,
+      springLength: 120,
+      springConstant: 0.08,
+      damping: 0.4,
+      avoidOverlap: 0.8,
+    },
+    stabilization: { iterations: 200, fit: true },
+  },
+  interaction: {
+    hover: true,
+    tooltipDelay: 100,
+    hideEdgesOnDrag: true,
+    navigationButtons: false,
+    keyboard: false,
+  },
+  nodes: { shape: 'dot', borderWidth: 1.5 },
+  edges: { smooth: { type: 'continuous', roundness: 0.2 }, selectionWidth: 3 },
+});
+
+network.once('stabilizationIterationsDone', () => {
+  network.setOptions({ physics: { enabled: false } });
+});
+
+function showInfo(nodeId) {
+  const n = nodesDS.get(nodeId);
+  if (!n) return;
+  const neighborIds = network.getConnectedNodes(nodeId);
+  const neighborItems = neighborIds.map(nid => {
+    const nb = nodesDS.get(nid);
+    const color = nb ? nb.color.background : '#555';
+    return `<span class="neighbor-link" style="border-left-color:${esc(color)}" onclick="focusNode(${JSON.stringify(nid)})">${esc(nb ? nb.label : nid)}</span>`;
+  }).join('');
+  document.getElementById('info-content').innerHTML = `
+    <div class="field"><b>${esc(n.label)}</b></div>
+    <div class="field">Type: ${esc(n._file_type || 'unknown')}</div>
+    <div class="field">Community: ${esc(n._community_name)}</div>
+    <div class="field">Source: ${esc(n._source_file || '-')}</div>
+    <div class="field">Degree: ${n._degree}</div>
+    ${neighborIds.length ? `<div class="field" style="margin-top:8px;color:#aaa;font-size:11px">Neighbors (${neighborIds.length})</div><div id="neighbors-list">${neighborItems}</div>` : ''}
+  `;
+}
+
+function focusNode(nodeId) {
+  network.focus(nodeId, { scale: 1.4, animation: true });
+  network.selectNodes([nodeId]);
+  showInfo(nodeId);
+}
+
+// Track hovered node — hover detection is more reliable than click params
+let hoveredNodeId = null;
+network.on('hoverNode', params => {
+  hoveredNodeId = params.node;
+  container.style.cursor = 'pointer';
+});
+network.on('blurNode', () => {
+  hoveredNodeId = null;
+  container.style.cursor = 'default';
+});
+container.addEventListener('click', () => {
+  if (hoveredNodeId !== null) {
+    showInfo(hoveredNodeId);
+    network.selectNodes([hoveredNodeId]);
+  }
+});
+network.on('click', params => {
+  if (params.nodes.length > 0) {
+    showInfo(params.nodes[0]);
+  } else if (hoveredNodeId === null) {
+    document.getElementById('info-content').innerHTML = '<span class="empty">Click a node to inspect it</span>';
+  }
+});
+
+const searchInput = document.getElementById('search');
+const searchResults = document.getElementById('search-results');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  searchResults.innerHTML = '';
+  if (!q) { searchResults.style.display = 'none'; return; }
+  const matches = RAW_NODES.filter(n => n.label.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { searchResults.style.display = 'none'; return; }
+  searchResults.style.display = 'block';
+  matches.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'search-item';
+    el.textContent = n.label;
+    el.style.borderLeft = `3px solid ${n.color.background}`;
+    el.style.paddingLeft = '8px';
+    el.onclick = () => {
+      network.focus(n.id, { scale: 1.5, animation: true });
+      network.selectNodes([n.id]);
+      showInfo(n.id);
+      searchResults.style.display = 'none';
+      searchInput.value = '';
+    };
+    searchResults.appendChild(el);
+  });
+});
+document.addEventListener('click', e => {
+  if (!searchResults.contains(e.target) && e.target !== searchInput)
+    searchResults.style.display = 'none';
+});
+
+const hiddenCommunities = new Set();
+
+const selectAllCb = document.getElementById('select-all-cb');
+
+function updateSelectAllState() {
+  const total = LEGEND.length;
+  const hidden = hiddenCommunities.size;
+  selectAllCb.checked = hidden === 0;
+  selectAllCb.indeterminate = hidden > 0 && hidden < total;
+}
+
+function toggleAllCommunities(hide) {
+  document.querySelectorAll('.legend-item').forEach(item => {
+    hide ? item.classList.add('dimmed') : item.classList.remove('dimmed');
+  });
+  document.querySelectorAll('.legend-cb').forEach(cb => {
+    cb.checked = !hide;
+  });
+  LEGEND.forEach(c => {
+    if (hide) hiddenCommunities.add(c.cid); else hiddenCommunities.delete(c.cid);
+  });
+  const updates = RAW_NODES.map(n => ({ id: n.id, hidden: hide }));
+  nodesDS.update(updates);
+  updateSelectAllState();
+}
+
+const legendEl = document.getElementById('legend');
+LEGEND.forEach(c => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'legend-cb';
+  cb.checked = true;
+  cb.addEventListener('change', (e) => {
+    e.stopPropagation();
+    if (cb.checked) {
+      hiddenCommunities.delete(c.cid);
+      item.classList.remove('dimmed');
+    } else {
+      hiddenCommunities.add(c.cid);
+      item.classList.add('dimmed');
+    }
+    const updates = RAW_NODES
+      .filter(n => n.community === c.cid)
+      .map(n => ({ id: n.id, hidden: !cb.checked }));
+    nodesDS.update(updates);
+    updateSelectAllState();
+  });
+  item.innerHTML = `<div class="legend-dot" style="background:${c.color}"></div>
+    <span class="legend-label">${c.label}</span>
+    <span class="legend-count">${c.count}</span>`;
+  item.prepend(cb);
+  item.onclick = (e) => {
+    if (e.target === cb) return;
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change'));
+  };
+  legendEl.appendChild(item);
+});
+</script>
+<script>
+// Render hyperedges as shaded regions
+const hyperedges = [];
+// afterDrawing passes ctx already transformed to network coordinate space.
+// Draw node positions raw — no manual pan/zoom/DPR math needed.
+network.on('afterDrawing', function(ctx) {
+    hyperedges.forEach(h => {
+        const positions = h.nodes
+            .map(nid => network.getPositions([nid])[nid])
+            .filter(p => p !== undefined);
+        if (positions.length < 2) return;
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle = '#6366f1';
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Centroid and expanded hull in network coordinates
+        const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+        const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+        const expanded = positions.map(p => ({
+            x: cx + (p.x - cx) * 1.15,
+            y: cy + (p.y - cy) * 1.15
+        }));
+        ctx.moveTo(expanded[0].x, expanded[0].y);
+        expanded.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 0.4;
+        ctx.stroke();
+        // Label
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = '#4f46e5';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(h.label, cx, cy - 5);
+        ctx.restore();
+    });
+});
+</script>
+</body>
+</html>

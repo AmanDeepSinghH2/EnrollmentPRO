@@ -1,0 +1,102 @@
+{
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\js\\auth.js": {
+    "mtime": 1776448085.1596477,
+    "hash": "f6e7ac43452d6aa1a09e5d51b64e68c4"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\js\\firebase-config.js": {
+    "mtime": 1776449640.7559528,
+    "hash": "61f2fdd3d0fd71d0639834addaa364a2"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\js\\guards.js": {
+    "mtime": 1776448099.7481716,
+    "hash": "190dcc28313456e1cfb4239ceccc0087"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\js\\utils.js": {
+    "mtime": 1776448101.7584019,
+    "hash": "0972673de2dccc7acdcfbad1edb9f2a4"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\js\\components\\footer.js": {
+    "mtime": 1776448133.8978064,
+    "hash": "205eb3746d5d3bc29c69ef2728c2986e"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\js\\components\\header.js": {
+    "mtime": 1777270749.8676178,
+    "hash": "d6a3f8db0ffb2ec1d3c127ca0e5ad9c1"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\js\\components\\toast.js": {
+    "mtime": 1776448135.911155,
+    "hash": "765fdb23c491b2a105c197a66f88a3f8"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\README.md": {
+    "mtime": 1776448486.1951416,
+    "hash": "bbcdfe8bb39da7ff7041f8a2a83d76a3"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\about.html": {
+    "mtime": 1776448188.3577938,
+    "hash": "d1fdcc28e6e6aed120f6fe53ea49fbe1"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\index.html": {
+    "mtime": 1776448186.3096771,
+    "hash": "bab25f8303aa62653139d8dc10098bce"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\maintenance.html": {
+    "mtime": 1777270718.872022,
+    "hash": "711556b1efbf792f845e6e58282e565b"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\auth\\signin.html": {
+    "mtime": 1776448225.080304,
+    "hash": "63b7a8fc0b7b8f5af2ad40e2fde4453c"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\auth\\signup.html": {
+    "mtime": 1776448227.1009865,
+    "hash": "fd83b7d4f4626f29e676ac31050ab205"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\dashboard.html": {
+    "mtime": 1776448327.9977624,
+    "hash": "fb26b35fb504afd9c91e123cb04e1db9"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\manage\\course-faculty.html": {
+    "mtime": 1776448415.4786568,
+    "hash": "216f1b0cbb0b4747cc6cc41c682edd24"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\manage\\courses.html": {
+    "mtime": 1776448360.586508,
+    "hash": "77c5ae5ca76b2876d2b1d77be6d41561"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\manage\\enrollments.html": {
+    "mtime": 1776448417.4901633,
+    "hash": "612d5878427d8a2d8e05554b7c7f4aa7"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\manage\\faculty-list.html": {
+    "mtime": 1776448370.2386088,
+    "hash": "6d5fa22d9aa956bc41a16adc7493b317"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\manage\\grades.html": {
+    "mtime": 1776448459.2048368,
+    "hash": "d566c72f029ece65102f9a29ef338cef"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\manage\\student-parents.html": {
+    "mtime": 1776448461.190317,
+    "hash": "3b32ba69551375fea267f05ae8eb3251"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\faculty\\manage\\students.html": {
+    "mtime": 1776448368.218872,
+    "hash": "2dd85ed927fb7643a96841284dd1b609"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\student\\browse-courses.html": {
+    "mtime": 1777270737.4509096,
+    "hash": "0958ab123804d8c7e97bfa167282d99f"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\student\\dashboard.html": {
+    "mtime": 1776448276.45472,
+    "hash": "ee8572da9deb99285efbfc1bb802467e"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\student\\enrollment-status.html": {
+    "mtime": 1776448287.9811623,
+    "hash": "0951524b71e0549dd441d5f042d00e9e"
+  },
+  "C:\\Users\\Aman Deep Singh\\Downloads\\SEPM\\EnrollmentPRO\\public\\student\\my-courses.html": {
+    "mtime": 1777271749.859156,
+    "hash": "de0d06b4c71cde474bde5f5a2b1cffb1"
+  }
+}
