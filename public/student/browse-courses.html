@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Browse Courses — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">University Course Catalog</h1>
+        <p class="page-subtitle">Explore available courses for the current semester.</p>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">
+          <span>📖 All Available Courses</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Course Name</th>
+                <th>Course ID</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="catalog-tbody">
+              <tr><td colspan="3" class="table-empty">Loading course catalog...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, query, getDocs, addDoc, where, serverTimestamp }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { addCell } from '/js/utils.js';
+
+    renderFooter();
+    const { user, profile } = await requireAuth('student');
+    renderHeader(user, 'student', 'browse');
+
+    const tbody = document.getElementById('catalog-tbody');
+
+    async function loadCatalog() {
+      try {
+        // Get all courses
+        const coursesSnap = await getDocs(collection(db, 'courses'));
+        
+        // Get student's current enrollments to prevent double enrollment
+        const enrollSnap = await getDocs(
+          query(collection(db, 'enrollments'), where('studentId', '==', user.uid))
+        );
+        const enrolledCourseIds = new Set();
+        enrollSnap.forEach(d => enrolledCourseIds.add(d.data().courseId));
+
+        tbody.innerHTML = '';
+
+        if (coursesSnap.empty) {
+          tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No courses found in the catalog.</td></tr>';
+          return;
+        }
+
+        coursesSnap.forEach(d => {
+          const course = d.data();
+          const tr = document.createElement('tr');
+          
+          addCell(tr, course.name);
+          addCell(tr, d.id);
+
+          const actionTd = document.createElement('td');
+          if (enrolledCourseIds.has(d.id)) {
+            const span = document.createElement('span');
+            span.className = 'badge badge-success';
+            span.textContent = 'Enrolled';
+            actionTd.appendChild(span);
+          } else {
+            const enrollBtn = document.createElement('button');
+            enrollBtn.className = 'btn btn-primary btn-sm';
+            enrollBtn.textContent = 'Enroll Now';
+            enrollBtn.onclick = () => enrollInCourse(d.id, course.name);
+            actionTd.appendChild(enrollBtn);
+          }
+          tr.appendChild(actionTd);
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="3" class="table-empty text-error">Failed to load course catalog.</td></tr>';
+      }
+    }
+
+    async function enrollInCourse(courseId, courseName) {
+      if (!confirm(`Do you want to enroll in ${courseName}?`)) return;
+
+      try {
+        await addDoc(collection(db, 'enrollments'), {
+          studentId: user.uid,
+          courseId: courseId,
+          status: 'Pending',
+          enrollmentDate: new Date().toISOString(),
+          semester: profile.semester || '1'
+        });
+        showToast(`Successfully requested enrollment for ${courseName}`, 'success');
+        loadCatalog();
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to enroll: ' + err.message, 'error');
+      }
+    }
+
+    loadCatalog();
+  </script>
+
+</body>
+</html>

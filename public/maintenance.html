@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Under Maintenance — EnrollmentPRO</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--color-bg);
+      margin: 0;
+      overflow: hidden;
+    }
+    .maintenance-card {
+      text-align: center;
+      padding: var(--space-12);
+      max-width: 600px;
+      width: 90%;
+      background: var(--gradient-card);
+      border-radius: var(--radius-3xl);
+      box-shadow: var(--shadow-2xl);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      position: relative;
+      z-index: 1;
+    }
+    .maintenance-icon {
+      font-size: 5rem;
+      margin-bottom: var(--space-6);
+      display: inline-block;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+    .maintenance-title {
+      font-size: var(--font-size-3xl);
+      font-weight: 800;
+      margin-bottom: var(--space-4);
+      background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .maintenance-desc {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-lg);
+      line-height: 1.6;
+      margin-bottom: var(--space-8);
+    }
+    .bg-blobs {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .blob {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: var(--color-primary);
+      filter: blur(120px);
+      opacity: 0.15;
+      border-radius: 50%;
+    }
+    .blob-1 { top: -100px; left: -100px; }
+    .blob-2 { bottom: -100px; right: -100px; background: var(--color-secondary); }
+  </style>
+</head>
+<body>
+  <div class="bg-blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+  <div class="maintenance-card animate-fade-in-up">
+    <div class="maintenance-icon">🛠️</div>
+    <h1 class="maintenance-title">Upgrading Your Experience</h1>
+    <p class="maintenance-desc">
+      EnrollmentPRO is currently undergoing scheduled maintenance to bring you new features and a better experience. We'll be back online shortly.
+    </p>
+    <div style="display: flex; justify-content: center; gap: var(--space-4);">
+      <div class="badge badge-warning" style="padding: var(--space-2) var(--space-4); font-size: 1rem;">Status: Maintenance Mode</div>
+    </div>
+  </div>
+</body>
+</html>

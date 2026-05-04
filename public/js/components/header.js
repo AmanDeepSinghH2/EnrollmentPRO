@@ -28,8 +28,9 @@ export function renderHeader(user = null, role = null, activePage = '') {
   } else if (role === 'student') {
     navLinks = `
       <a href="/student/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Dashboard</a>
+      <a href="/student/browse-courses.html" class="nav-link ${activePage === 'browse' ? 'nav-link--active' : ''}">Browse Catalog</a>
       <a href="/student/my-courses.html" class="nav-link ${activePage === 'courses' ? 'nav-link--active' : ''}">My Courses</a>
-      <a href="/student/enrollment-status.html" class="nav-link ${activePage === 'enrollment' ? 'nav-link--active' : ''}">Enrollment</a>
+      <a href="/student/enrollment-status.html" class="nav-link ${activePage === 'enrollment' ? 'nav-link--active' : ''}">Status</a>
       <button class="nav-link" id="logout-btn">Logout</button>
     `;
   } else if (role === 'faculty') {

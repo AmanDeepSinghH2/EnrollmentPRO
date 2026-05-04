@@ -40,11 +40,11 @@ service cloud.firestore {
 
     // Enrollments: students read own, faculty read/write all
     match /enrollments/{enrollmentId} {
-      allow read: if isAuth() && (
+      allow read, delete: if isAuth() && (
         resource.data.studentId == request.auth.uid || isRole('faculty')
       );
       allow create: if isAuth();
-      allow update, delete: if isRole('faculty');
+      allow update: if isRole('faculty');
     }
 
     // Grades: students read own, faculty read/write all
