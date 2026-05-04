@@ -27,7 +27,8 @@
             <thead>
               <tr>
                 <th>Course Name</th>
-                <th>Course ID</th>
+                <th>Semester</th>
+                <th>Availability</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -48,7 +49,7 @@
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
     import { getAllCourses } from '/js/services/course.service.js';
-    import { enrollStudent, getStudentEnrollments } from '/js/services/enrollment.service.js';
+    import { enrollStudent, getStudentEnrollments, getAllEnrollments } from '/js/services/enrollment.service.js';
     import { addCell } from '/js/utils.js';
 
     renderFooter();
@@ -57,28 +58,49 @@
 
     const tbody = document.getElementById('catalog-tbody');
 
+    // Make it global so enrollInCourse can re-check limits if needed, but UI is enough
+    let coursesData = [];
+    let allEnrollmentsData = [];
+
     async function loadCatalog() {
       try {
-        const [courses, enrollments] = await Promise.all([
+        const [courses, myEnrollments, allEnrollments] = await Promise.all([
           getAllCourses(),
-          getStudentEnrollments(user.uid)
+          getStudentEnrollments(user.uid),
+          getAllEnrollments()
         ]);
+        
+        coursesData = courses;
+        allEnrollmentsData = allEnrollments;
 
-        const enrollmentMap = {};
-        enrollments.forEach(e => { enrollmentMap[e.courseId] = true; });
+        const myEnrollmentMap = {};
+        myEnrollments.forEach(e => { myEnrollmentMap[e.courseId] = true; });
+
+        // Calculate seats taken per course
+        const seatCounts = {};
+        allEnrollments.forEach(e => {
+          if (!seatCounts[e.courseId]) seatCounts[e.courseId] = 0;
+          seatCounts[e.courseId]++;
+        });
 
         tbody.innerHTML = '';
         if (courses.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No courses found in the catalog.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No courses found in the catalog.</td></tr>';
           return;
         }
 
         courses.forEach(course => {
-          const alreadyEnrolled = enrollmentMap[course.id];
+          const alreadyEnrolled = myEnrollmentMap[course.id];
           const tr = document.createElement('tr');
 
           addCell(tr, course.name);
-          addCell(tr, course.id);
+          addCell(tr, `Semester ${course.semester || '1'}`);
+          
+          // Seat info
+          const limit = course.seatLimit || 30;
+          const taken = seatCounts[course.id] || 0;
+          const remaining = Math.max(limit - taken, 0);
+          addCell(tr, `${taken} / ${limit} ( ${remaining} left )`);
 
           const actionTd = document.createElement('td');
           if (alreadyEnrolled) {
@@ -86,11 +108,16 @@
             span.className = 'badge badge-success';
             span.textContent = 'Enrolled';
             actionTd.appendChild(span);
+          } else if (remaining === 0) {
+            const span = document.createElement('span');
+            span.className = 'badge badge-warning';
+            span.textContent = 'Seats Full';
+            actionTd.appendChild(span);
           } else {
             const enrollBtn = document.createElement('button');
             enrollBtn.className = 'btn btn-primary btn-sm';
             enrollBtn.textContent = 'Enroll Now';
-            enrollBtn.addEventListener('click', () => enrollInCourse(course.id, course.name));
+            enrollBtn.addEventListener('click', () => enrollInCourse(course.id, course.name, course.semester));
             actionTd.appendChild(enrollBtn);
           }
           tr.appendChild(actionTd);
@@ -98,14 +125,14 @@
         });
       } catch (err) {
         console.error('Load catalog error:', err);
-        tbody.innerHTML = '<tr><td colspan="3" class="table-empty text-error">Failed to load course catalog.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="table-empty text-error">Failed to load course catalog.</td></tr>';
       }
     }
 
-    async function enrollInCourse(courseId, courseName) {
+    async function enrollInCourse(courseId, courseName, courseSemester) {
       if (!confirm(`Enroll in ${courseName}?`)) return;
       try {
-        await enrollStudent(user.uid, courseId, profile.semester || '1');
+        await enrollStudent(user.uid, courseId, courseSemester || '1');
         showToast(`Enrollment request sent for ${courseName}`, 'success');
         loadCatalog();
       } catch (err) {

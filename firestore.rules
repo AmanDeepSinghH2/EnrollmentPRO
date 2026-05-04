@@ -38,9 +38,10 @@ service cloud.firestore {
       allow write: if isRole('faculty');
     }
 
-    // Enrollments: students create only their own, read/delete own or faculty; faculty update
+    // Enrollments: authenticated can read (to count seats), students create only their own, delete own, faculty update/delete
     match /enrollments/{enrollmentId} {
-      allow read, delete: if isAuth() && (
+      allow read: if isAuth();
+      allow delete: if isAuth() && (
         resource.data.studentId == request.auth.uid || isRole('faculty')
       );
       // Students can only enroll themselves — prevent spoofing other student UIDs

@@ -21,11 +21,15 @@ export async function getAllCourses() {
 /**
  * Add a new course.
  * @param {string} name
+ * @param {number} seatLimit
+ * @param {string} semester
  * @returns {Promise<string>} new course document ID
  */
-export async function addCourse(name) {
+export async function addCourse(name, seatLimit = 30, semester = '1') {
   const ref = await addDoc(collection(db, 'courses'), {
     name,
+    seatLimit: parseInt(seatLimit),
+    semester: semester.toString(),
     createdAt: new Date().toISOString()
   });
   return ref.id;
@@ -37,6 +41,29 @@ export async function addCourse(name) {
  */
 export async function deleteCourse(courseId) {
   await deleteDoc(doc(db, 'courses', courseId));
+}
+
+/**
+ * Assign a faculty member to teach a course (take up).
+ * @param {string} courseId
+ * @param {string} facultyId
+ * @returns {Promise<string>} new assignment document ID
+ */
+export async function takeUpCourse(courseId, facultyId) {
+  const ref = await addDoc(collection(db, 'courseFaculty'), {
+    courseId,
+    facultyId,
+    createdAt: new Date().toISOString()
+  });
+  return ref.id;
+}
+
+/**
+ * Faculty drops a course they are teaching.
+ * @param {string} assignmentId
+ */
+export async function dropTeachingCourse(assignmentId) {
+  await deleteDoc(doc(db, 'courseFaculty', assignmentId));
 }
 
 /**
