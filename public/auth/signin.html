@@ -18,8 +18,8 @@
 
       <form id="signin-form">
         <div class="form-group">
-          <label for="email" class="form-label form-label--required">Email</label>
-          <input type="email" id="email" class="form-input" placeholder="your.email@srmist.edu" required autocomplete="email" />
+          <label for="login-id" class="form-label form-label--required">Username or Email</label>
+          <input type="text" id="login-id" class="form-input" placeholder="Enter your username or email" required />
         </div>
 
         <div class="form-group">
@@ -62,11 +62,11 @@
       e.preventDefault();
       errorMsg.style.display = 'none';
 
-      const email = form.email.value.trim();
+      const loginId = document.getElementById('login-id').value.trim();
       const password = form.password.value;
 
-      if (!email || password.length < 6) {
-        errorMsg.textContent = 'Please enter a valid email and password (min 6 characters).';
+      if (!loginId || password.length < 6) {
+        errorMsg.textContent = 'Please enter your username/email and password.';
         errorMsg.style.display = 'block';
         return;
       }
@@ -76,8 +76,8 @@
       submitBtn.classList.add('btn-loading');
 
       try {
-        const cred = await signin(email, password);
-        const role = await getUserRole(cred.user.uid);
+        const result = await signin(loginId, password);
+        const role = result.user.role;
         showToast('Welcome back!', 'success');
 
         setTimeout(() => {

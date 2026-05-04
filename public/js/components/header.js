@@ -28,27 +28,28 @@ export function renderHeader(user = null, role = null, activePage = '') {
   } else if (role === 'student') {
     navLinks = `
       <a href="/student/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Dashboard</a>
-      <a href="/student/browse-courses.html" class="nav-link ${activePage === 'browse' ? 'nav-link--active' : ''}">Browse Catalog</a>
       <a href="/student/my-courses.html" class="nav-link ${activePage === 'courses' ? 'nav-link--active' : ''}">My Courses</a>
       <a href="/student/enrollment-status.html" class="nav-link ${activePage === 'enrollment' ? 'nav-link--active' : ''}">Status</a>
-      <button class="nav-link" id="logout-btn">Logout</button>
+      <button class="nav-link nav-link--logout" id="logout-btn">Logout</button>
     `;
   } else if (role === 'faculty') {
     navLinks = `
       <a href="/faculty/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Dashboard</a>
       <div class="nav-dropdown">
-        <button class="nav-link" id="tools-toggle">Tools ▾</button>
+        <button class="nav-link" id="tools-toggle">Management ▾</button>
         <div class="nav-dropdown-menu" id="tools-menu">
           <a href="/faculty/manage/students.html" class="nav-dropdown-link">📋 Students</a>
-          <a href="/faculty/manage/faculty-list.html" class="nav-dropdown-link">👨‍🏫 Faculty</a>
           <a href="/faculty/manage/courses.html" class="nav-dropdown-link">📚 Courses</a>
-          <a href="/faculty/manage/course-faculty.html" class="nav-dropdown-link">🔗 Course-Faculty</a>
           <a href="/faculty/manage/enrollments.html" class="nav-dropdown-link">📝 Enrollments</a>
           <a href="/faculty/manage/grades.html" class="nav-dropdown-link">🎓 Grades</a>
-          <a href="/faculty/manage/student-parents.html" class="nav-dropdown-link">👪 Parents</a>
         </div>
       </div>
-      <button class="nav-link" id="logout-btn">Logout</button>
+      <button class="nav-link nav-link--logout" id="logout-btn">Logout</button>
+    `;
+  } else if (role === 'admin') {
+    navLinks = `
+      <a href="/admin/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Admin Panel</a>
+      <button class="nav-link nav-link--logout" id="logout-btn">Logout</button>
     `;
   }
 

@@ -106,9 +106,6 @@
     import { requireAuth } from '/js/guards.js';
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, query, where, getDocs, doc, getDoc }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
     import { getInitials, formatPhone } from '/js/utils.js';
 
     renderFooter();
@@ -122,41 +119,14 @@
     document.getElementById('profile-email').textContent = profile.email || '—';
     document.getElementById('profile-phone').textContent = formatPhone(profile.phone);
 
-    // Stats
-    try {
-      // My courses
-      const cfSnap = await getDocs(query(collection(db, 'courseFaculty'), where('facultyId', '==', user.uid)));
-      document.getElementById('stat-courses').textContent = cfSnap.size;
-
-      // Course names
-      const coursesList = document.getElementById('courses-list');
-      coursesList.innerHTML = '';
-      if (cfSnap.empty) {
-        coursesList.innerHTML = '<li class="text-muted" style="text-align:center; padding:var(--space-4);">No courses assigned yet</li>';
-      } else {
-        for (const d of cfSnap.docs) {
-          const courseDoc = await getDoc(doc(db, 'courses', d.data().courseId));
-          const li = document.createElement('li');
-          li.style.cssText = 'padding:var(--space-3) var(--space-4); background:var(--color-surface-alt); border-radius:var(--radius-md); font-weight:500; font-size:var(--font-size-sm);';
-          li.textContent = courseDoc.exists() ? courseDoc.data().name : 'Unknown Course';
-          coursesList.appendChild(li);
-        }
-      }
-
-      // Total students
-      const studentsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
-      document.getElementById('stat-students').textContent = studentsSnap.size;
-
-      // Total enrollments & pending
-      const enrollSnap = await getDocs(collection(db, 'enrollments'));
-      document.getElementById('stat-enrollments').textContent = enrollSnap.size;
-      let pending = 0;
-      enrollSnap.forEach(d => { if (d.data().status === 'Pending') pending++; });
-      document.getElementById('stat-pending').textContent = pending;
-      if (pending > 0) document.getElementById('stat-pending').style.color = 'var(--color-warning)';
-    } catch (err) {
-      console.error('Dashboard load error:', err);
-    }
+    // Placeholder for migrated data
+    document.getElementById('stat-courses').textContent = '...';
+    document.getElementById('stat-students').textContent = '...';
+    document.getElementById('stat-enrollments').textContent = '...';
+    document.getElementById('stat-pending').textContent = '...';
+    
+    document.getElementById('courses-list').innerHTML = '<li class="text-muted" style="text-align:center; padding:var(--space-4);">Management data is currently being migrated to the new secure backend.</li>';
+  </script>
   </script>
 
 </body>

@@ -1,78 +1,102 @@
 // =====================================================================
-// EnrollmentPRO — Authentication Module
+// EnrollmentPRO — Authentication Module (Flask + MySQL)
 // =====================================================================
 
-import { auth, db } from './firebase-config.js';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-import {
-  doc, setDoc, getDoc
-} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+const API_BASE_URL = 'http://localhost:5000/auth';
 
 /**
- * Sign up a new user and create their Firestore profile.
+ * Sign up a new user via Flask API.
  * @param {string} email
  * @param {string} password
- * @param {object} profileData — { name, role, phone, dob, semester?, address? }
- * @returns {Promise<object>} Firebase user credential
+ * @param {object} profileData — { username, name, role }
  */
 export async function signup(email, password, profileData) {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
-  await setDoc(doc(db, 'users', cred.user.uid), {
-    ...profileData,
-    email: email,
-    createdAt: new Date().toISOString()
+  const response = await fetch(`${API_BASE_URL}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      password,
+      username: profileData.username,
+      name: profileData.name,
+      role: profileData.role
+    })
   });
-  return cred;
+
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Registration failed');
+  return result;
 }
 
 /**
- * Sign in an existing user.
- * @param {string} email
+ * Sign in an existing user via Flask API.
+ * @param {string} username
  * @param {string} password
- * @returns {Promise<object>} Firebase user credential
  */
-export async function signin(email, password) {
-  return signInWithEmailAndPassword(auth, email, password);
+export async function signin(username, password) {
+  const response = await fetch(`${API_BASE_URL}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Login failed');
+  
+  // Store user in localStorage for persistence (simplified session)
+  localStorage.setItem('user', JSON.stringify(result.user));
+  return result;
 }
 
 /**
- * Sign out the current user — actually destroys the session.
+ * Sign out the current user.
  */
 export async function logout() {
-  return signOut(auth);
+  const response = await fetch(`${API_BASE_URL}/logout`, {
+    method: 'POST'
+  });
+  localStorage.removeItem('user');
+  return response.json();
 }
 
 /**
- * Get the role of a user from Firestore.
- * @param {string} uid
- * @returns {Promise<string>} "student" or "faculty"
+ * Verify session with the server.
  */
-export async function getUserRole(uid) {
-  const userDoc = await getDoc(doc(db, 'users', uid));
-  if (!userDoc.exists()) throw new Error('User profile not found');
-  return userDoc.data().role;
+export async function checkAuth() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/me`);
+    if (!response.ok) {
+      localStorage.removeItem('user');
+      return null;
+    }
+    const user = await response.json();
+    localStorage.setItem('user', JSON.stringify(user));
+    return user;
+  } catch (err) {
+    localStorage.removeItem('user');
+    return null;
+  }
 }
 
 /**
- * Get the full profile of a user from Firestore.
- * @param {string} uid
- * @returns {Promise<object>}
+ * Get the current user from localStorage.
  */
-export async function getUserProfile(uid) {
-  const userDoc = await getDoc(doc(db, 'users', uid));
-  if (!userDoc.exists()) throw new Error('User profile not found');
-  return { uid, ...userDoc.data() };
+export function getCurrentUser() {
+  const user = localStorage.getItem('user');
+  return user ? JSON.parse(user) : null;
 }
 
 /**
- * Listen for auth state changes.
- * @param {function} callback — receives (user) or (null)
+ * Check if the user is authenticated (via local state).
  */
-export function onAuth(callback) {
-  return onAuthStateChanged(auth, callback);
+export function isAuthenticated() {
+  return !!localStorage.getItem('user');
+}
+
+/**
+ * Get the role of the current user.
+ */
+export function getUserRole() {
+  const user = getCurrentUser();
+  return user ? user.role : null;
 }

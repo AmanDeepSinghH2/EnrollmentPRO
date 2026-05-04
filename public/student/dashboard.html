@@ -109,9 +109,6 @@
     import { requireAuth } from '/js/guards.js';
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, query, where, getDocs, doc, getDoc }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
     import { getInitials, formatDate, formatPhone } from '/js/utils.js';
 
     renderFooter();
@@ -131,63 +128,11 @@
     document.getElementById('profile-address').textContent = profile.address || '—';
     document.getElementById('stat-semester').textContent = profile.semester || '—';
 
-    // Fetch enrollments
-    try {
-      const enrollQ = query(
-        collection(db, 'enrollments'),
-        where('studentId', '==', user.uid)
-      );
-      const enrollSnap = await getDocs(enrollQ);
-      const enrollments = [];
-      enrollSnap.forEach(d => enrollments.push({ id: d.id, ...d.data() }));
-
-      document.getElementById('stat-courses').textContent = enrollments.length;
-
-      // Determine latest enrollment status
-      const enrolled = enrollments.filter(e => e.status === 'Enrolled');
-      const pending = enrollments.filter(e => e.status === 'Pending');
-      if (enrolled.length > 0) {
-        document.getElementById('stat-status').textContent = 'Enrolled';
-        document.getElementById('stat-status').style.color = 'var(--color-success)';
-      } else if (pending.length > 0) {
-        document.getElementById('stat-status').textContent = 'Pending';
-        document.getElementById('stat-status').style.color = 'var(--color-warning)';
-      } else {
-        document.getElementById('stat-status').textContent = 'None';
-      }
-
-      // Fetch course names for enrolled courses
-      const coursesList = document.getElementById('courses-list');
-      coursesList.innerHTML = '';
-
-      if (enrollments.length === 0) {
-        coursesList.innerHTML = '<li class="text-muted" style="text-align:center; padding:var(--space-4);">No courses enrolled yet</li>';
-      } else {
-        for (const enrollment of enrollments) {
-          if (enrollment.courseId) {
-            const courseDoc = await getDoc(doc(db, 'courses', enrollment.courseId));
-            const li = document.createElement('li');
-            li.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:var(--space-3) var(--space-4); background:var(--color-surface-alt); border-radius:var(--radius-md);';
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.style.fontWeight = '500';
-            nameSpan.textContent = courseDoc.exists() ? courseDoc.data().name : 'Unknown Course';
-            
-            const badge = document.createElement('span');
-            badge.className = `badge ${enrollment.status === 'Enrolled' ? 'badge-success' : 'badge-warning'}`;
-            badge.textContent = enrollment.status || 'Pending';
-            
-            li.appendChild(nameSpan);
-            li.appendChild(badge);
-            coursesList.appendChild(li);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error loading dashboard data:', err);
-      document.getElementById('stat-courses').textContent = '!';
-      document.getElementById('stat-status').textContent = 'Error';
-    }
+    // Placeholder for migrated data
+    document.getElementById('stat-courses').textContent = '...';
+    document.getElementById('stat-status').textContent = 'Migrating...';
+    document.getElementById('courses-list').innerHTML = '<li class="text-muted" style="text-align:center; padding:var(--space-4);">Course data is currently being migrated to the new secure backend.</li>';
+  </script>
   </script>
 
 </body>
