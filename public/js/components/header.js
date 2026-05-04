@@ -30,6 +30,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
       <a href="/student/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Dashboard</a>
       <a href="/student/browse-courses.html" class="nav-link ${activePage === 'browse' ? 'nav-link--active' : ''}">Browse Courses</a>
       <a href="/student/my-courses.html" class="nav-link ${activePage === 'courses' ? 'nav-link--active' : ''}">My Courses</a>
+      <a href="/student/semester-registration.html" class="nav-link ${activePage === 'semester' ? 'nav-link--active' : ''}">Semester Reg.</a>
       <a href="/student/enrollment-status.html" class="nav-link ${activePage === 'enrollment' ? 'nav-link--active' : ''}">Status</a>
       <a href="/student/notice-board.html" class="nav-link ${activePage === 'notices' ? 'nav-link--active' : ''}">Notices</a>
       <button class="nav-link nav-link--logout" id="logout-btn">Logout</button>
@@ -41,6 +42,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
         <button class="nav-link" id="tools-toggle">Management ▾</button>
         <div class="nav-dropdown-menu" id="tools-menu">
           <a href="/faculty/manage/notices.html" class="nav-dropdown-link">📢 Notices</a>
+          <a href="/faculty/manage/semester-registrations.html" class="nav-dropdown-link">🗓️ Semesters</a>
           <a href="/faculty/manage/students.html" class="nav-dropdown-link">📋 Students</a>
           <a href="/faculty/manage/courses.html" class="nav-dropdown-link">📚 Courses</a>
           <a href="/faculty/manage/enrollments.html" class="nav-dropdown-link">📝 Enrollments</a>

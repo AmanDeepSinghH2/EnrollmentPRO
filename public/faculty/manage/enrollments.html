@@ -35,6 +35,7 @@
             <label for="status" class="form-label">Status</label>
             <select id="status" class="form-select">
               <option value="Pending">Pending</option>
+              <option value="Offered">Offered</option>
               <option value="Enrolled">Enrolled</option>
             </select>
           </div>
@@ -147,7 +148,11 @@
           const tr = document.createElement('tr');
           addCell(tr, usersMap[enrollment.studentId]?.name || enrollment.studentId);
           addCell(tr, coursesMap[enrollment.courseId]?.name || enrollment.courseId);
-          addBadgeCell(tr, enrollment.status, enrollment.status === 'Enrolled' ? 'success' : 'warning');
+          let badgeClass = 'warning';
+          if (enrollment.status === 'Enrolled') badgeClass = 'success';
+          if (enrollment.status === 'Offered') badgeClass = 'info';
+          addBadgeCell(tr, enrollment.status, badgeClass);
+          
           addCell(tr, enrollment.semester || '—');
           addCell(tr, formatDate(enrollment.enrollmentDate));
 
@@ -158,7 +163,7 @@
           if (enrollment.status === 'Pending') {
             const approveBtn = document.createElement('button');
             approveBtn.className = 'btn btn-primary btn-sm';
-            approveBtn.textContent = 'Approve';
+            approveBtn.textContent = 'Offer Seat';
             approveBtn.addEventListener('click', async () => {
               try {
                 await approveEnrollment(enrollment.id);

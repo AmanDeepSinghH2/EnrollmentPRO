@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Semester Registration — EnrollmentPRO</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Semester Registration</h1>
+        <p class="page-subtitle">Apply for your upcoming semester. Requires faculty approval before you can confirm.</p>
+      </div>
+
+      <div class="form-card mb-8 animate-fade-in-up">
+        <h2 style="font-size:var(--font-size-lg); font-weight:700; margin-bottom:var(--space-5);">Apply for Semester</h2>
+        <form id="apply-form" style="display: flex; gap: var(--space-4); align-items: flex-end;">
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="semester" class="form-label form-label--required">Select Semester</label>
+            <select id="semester" class="form-select" required>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="height: 48px;">Apply Now</button>
+        </form>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">
+          <span>📅 My Registrations</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Semester</th>
+                <th>Application Date</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="4" class="table-empty">Loading records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { getStudentSemesterRegistrations, applyForSemester, confirmSemesterRegistration, deleteSemesterRegistration } from '/js/services/semester.service.js';
+    import { formatDate, addCell, addBadgeCell } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('student');
+    renderHeader(user, 'student', 'semester');
+
+    const tbody = document.getElementById('table-body');
+    const form = document.getElementById('apply-form');
+
+    async function loadData() {
+      try {
+        const records = await getStudentSemesterRegistrations(user.uid);
+        tbody.innerHTML = '';
+        
+        if (records.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No semester registrations found.</td></tr>';
+          return;
+        }
+
+        records.forEach(data => {
+          const tr = document.createElement('tr');
+          
+          addCell(tr, `Semester ${data.semester}`);
+          addCell(tr, formatDate(data.appliedAt));
+          
+          let badgeClass = 'warning';
+          if (data.status === 'Officially Enrolled') badgeClass = 'success';
+          if (data.status.includes('Approved')) badgeClass = 'info';
+          addBadgeCell(tr, data.status, badgeClass);
+
+          const actionTd = document.createElement('td');
+          actionTd.style.display = 'flex';
+          actionTd.style.gap = 'var(--space-2)';
+
+          if (data.status.includes('Approved')) {
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'btn btn-primary btn-sm';
+            confirmBtn.textContent = 'Confirm Enrollment';
+            confirmBtn.addEventListener('click', async () => {
+              try {
+                await confirmSemesterRegistration(data.id);
+                showToast('Semester officially confirmed!', 'success');
+                loadData();
+              } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+              }
+            });
+            actionTd.appendChild(confirmBtn);
+          } else if (data.status === 'Pending Approval') {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn btn-danger btn-sm';
+            delBtn.textContent = 'Cancel Application';
+            delBtn.addEventListener('click', async () => {
+              if (confirm('Cancel this application?')) {
+                try {
+                  await deleteSemesterRegistration(data.id);
+                  showToast('Application cancelled', 'success');
+                  loadData();
+                } catch (err) {
+                  showToast('Error: ' + err.message, 'error');
+                }
+              }
+            });
+            actionTd.appendChild(delBtn);
+          } else {
+            actionTd.textContent = '—';
+          }
+          
+          tr.appendChild(actionTd);
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="4" class="table-empty text-error">Failed to load data.</td></tr>';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const semester = document.getElementById('semester').value;
+      
+      try {
+        await applyForSemester(user.uid, semester);
+        showToast('Application submitted successfully!', 'success');
+        loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    loadData();
+  </script>
+
+</body>
+</html>

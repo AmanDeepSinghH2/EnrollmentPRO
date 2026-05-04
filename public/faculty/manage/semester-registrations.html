@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Semester Registrations — EnrollmentPRO</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Semester Registrations</h1>
+        <p class="page-subtitle">Review and approve student applications for upcoming semesters.</p>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">
+          <span>📋 All Applications</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Semester</th>
+                <th>Application Date</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="5" class="table-empty">Loading records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { getAllSemesterRegistrations, approveSemesterRegistration, deleteSemesterRegistration } from '/js/services/semester.service.js';
+    import { getAllStudents, buildUserMap } from '/js/services/user.service.js';
+    import { formatDate, addCell, addBadgeCell } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', '');
+
+    const tbody = document.getElementById('table-body');
+    let usersMap = {};
+
+    async function initialize() {
+      try {
+        const students = await getAllStudents();
+        usersMap = buildUserMap(students);
+        loadData();
+      } catch (err) {
+        showToast('Initialization error: ' + err.message, 'error');
+      }
+    }
+
+    async function loadData() {
+      try {
+        const records = await getAllSemesterRegistrations();
+        tbody.innerHTML = '';
+        
+        if (records.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No semester registrations found.</td></tr>';
+          return;
+        }
+
+        records.forEach(data => {
+          const tr = document.createElement('tr');
+          
+          const studentName = usersMap[data.studentId]?.name || data.studentId;
+          addCell(tr, studentName);
+          addCell(tr, `Semester ${data.semester}`);
+          addCell(tr, formatDate(data.appliedAt));
+          
+          let badgeClass = 'warning';
+          if (data.status === 'Officially Enrolled') badgeClass = 'success';
+          if (data.status.includes('Approved')) badgeClass = 'info';
+          addBadgeCell(tr, data.status, badgeClass);
+
+          const actionTd = document.createElement('td');
+          actionTd.style.display = 'flex';
+          actionTd.style.gap = 'var(--space-2)';
+
+          if (data.status === 'Pending Approval') {
+            const approveBtn = document.createElement('button');
+            approveBtn.className = 'btn btn-primary btn-sm';
+            approveBtn.textContent = 'Approve';
+            approveBtn.addEventListener('click', async () => {
+              try {
+                await approveSemesterRegistration(data.id);
+                showToast('Registration approved!', 'success');
+                loadData();
+              } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+              }
+            });
+            actionTd.appendChild(approveBtn);
+          }
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-danger btn-sm';
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', async () => {
+            if (confirm('Delete this registration entirely?')) {
+              try {
+                await deleteSemesterRegistration(data.id);
+                showToast('Registration deleted', 'success');
+                loadData();
+              } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+              }
+            }
+          });
+          actionTd.appendChild(delBtn);
+          
+          tr.appendChild(actionTd);
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="5" class="table-empty text-error">Failed to load data.</td></tr>';
+      }
+    }
+
+    initialize();
+  </script>
+
+</body>
+</html>
