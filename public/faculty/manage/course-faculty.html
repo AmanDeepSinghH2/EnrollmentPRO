@@ -59,8 +59,10 @@
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
     import { db } from '/js/firebase-config.js';
-    import { collection, addDoc, getDocs, deleteDoc, doc, getDoc, query, where }
+    import { collection, addDoc, getDocs, deleteDoc, doc, query, where }
       from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getAllCourses, buildCourseMap } from '/js/services/course.service.js';
+    import { getAllFaculty, buildUserMap } from '/js/services/user.service.js';
     import { addCell } from '/js/utils.js';
 
     renderFooter();
@@ -72,51 +74,70 @@
     const courseSelect = document.getElementById('courseId');
     const facultySelect = document.getElementById('facultyId');
 
-    // Populate dropdowns
-    const coursesSnap = await getDocs(collection(db, 'courses'));
-    const coursesMap = {};
-    coursesSnap.forEach(d => {
-      coursesMap[d.id] = d.data().name;
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.data().name;
-      courseSelect.appendChild(opt);
-    });
+    let coursesMap = {};
+    let facultyMap = {};
 
-    const facultySnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'faculty')));
-    const facultyMap = {};
-    facultySnap.forEach(d => {
-      facultyMap[d.id] = d.data().name;
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.data().name;
-      facultySelect.appendChild(opt);
-    });
+    async function initialize() {
+      try {
+        const [courses, faculty] = await Promise.all([
+          getAllCourses(),
+          getAllFaculty()
+        ]);
+
+        coursesMap = buildCourseMap(courses);
+        facultyMap = buildUserMap(faculty);
+
+        courses.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          courseSelect.appendChild(opt);
+        });
+
+        faculty.forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f.id;
+          opt.textContent = f.name;
+          facultySelect.appendChild(opt);
+        });
+
+        loadData();
+      } catch (err) {
+        showToast('Error initializing: ' + err.message, 'error');
+      }
+    }
 
     async function loadData() {
-      const snap = await getDocs(collection(db, 'courseFaculty'));
-      tbody.innerHTML = '';
-      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No assignments yet.</td></tr>'; return; }
-      snap.forEach(d => {
-        const data = d.data();
-        const tr = document.createElement('tr');
-        addCell(tr, coursesMap[data.courseId] || data.courseId);
-        addCell(tr, facultyMap[data.facultyId] || data.facultyId);
-        const actionTd = document.createElement('td');
-        const delBtn = document.createElement('button');
-        delBtn.className = 'btn btn-danger btn-sm';
-        delBtn.textContent = 'Remove';
-        delBtn.addEventListener('click', async () => {
-          if (confirm('Remove this assignment?')) {
-            await deleteDoc(doc(db, 'courseFaculty', d.id));
-            showToast('Assignment removed', 'success');
-            loadData();
-          }
+      try {
+        const snap = await getDocs(collection(db, 'courseFaculty'));
+        tbody.innerHTML = '';
+        if (snap.empty) {
+          tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No assignments yet.</td></tr>';
+          return;
+        }
+        snap.forEach(d => {
+          const data = d.data();
+          const tr = document.createElement('tr');
+          addCell(tr, coursesMap[data.courseId]?.name || data.courseId);
+          addCell(tr, facultyMap[data.facultyId]?.name || data.facultyId);
+          const actionTd = document.createElement('td');
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-danger btn-sm';
+          delBtn.textContent = 'Remove';
+          delBtn.addEventListener('click', async () => {
+            if (confirm('Remove this assignment?')) {
+              await deleteDoc(doc(db, 'courseFaculty', d.id));
+              showToast('Assignment removed', 'success');
+              loadData();
+            }
+          });
+          actionTd.appendChild(delBtn);
+          tr.appendChild(actionTd);
+          tbody.appendChild(tr);
         });
-        actionTd.appendChild(delBtn);
-        tr.appendChild(actionTd);
-        tbody.appendChild(tr);
-      });
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="3" class="table-empty">Error loading assignments.</td></tr>';
+      }
     }
 
     form.addEventListener('submit', async (e) => {
@@ -134,7 +155,7 @@
       }
     });
 
-    loadData();
+    initialize();
   </script>
 
 </body>

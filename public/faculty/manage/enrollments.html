@@ -82,9 +82,9 @@
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, where }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getAllEnrollments, approveEnrollment, dropEnrollment, enrollStudent } from '/js/services/enrollment.service.js';
+    import { getAllStudents, buildUserMap } from '/js/services/user.service.js';
+    import { getAllCourses, buildCourseMap } from '/js/services/course.service.js';
     import { addCell, addBadgeCell, formatDate } from '/js/utils.js';
 
     renderFooter();
@@ -93,78 +93,105 @@
 
     const tbody = document.getElementById('table-body');
     const form = document.getElementById('add-form');
-
-    // Populate student select
-    const studentsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
-    const studentsMap = {};
     const studentSelect = document.getElementById('studentId');
-    studentsSnap.forEach(d => {
-      studentsMap[d.id] = d.data().name;
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = `${d.data().name} (${d.data().email})`;
-      studentSelect.appendChild(opt);
-    });
-
-    // Populate course select
-    const coursesSnap = await getDocs(collection(db, 'courses'));
-    const coursesMap = {};
     const courseSelect = document.getElementById('courseId');
-    coursesSnap.forEach(d => {
-      coursesMap[d.id] = d.data().name;
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.data().name;
-      courseSelect.appendChild(opt);
-    });
+
+    // Maps for fast lookups
+    let usersMap = {};
+    let coursesMap = {};
+
+    async function initialize() {
+      try {
+        const [students, courses] = await Promise.all([
+          getAllStudents(),
+          getAllCourses()
+        ]);
+
+        usersMap = buildUserMap(students);
+        coursesMap = buildCourseMap(courses);
+
+        // Populate selects
+        students.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.name} (${s.email})`;
+          studentSelect.appendChild(opt);
+        });
+
+        courses.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          courseSelect.appendChild(opt);
+        });
+
+        loadData();
+      } catch (err) {
+        showToast('Initialization error: ' + err.message, 'error');
+      }
+    }
 
     // Set default date
     document.getElementById('enrollmentDate').valueAsDate = new Date();
 
     async function loadData() {
-      const snap = await getDocs(collection(db, 'enrollments'));
-      tbody.innerHTML = '';
-      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No enrollments yet.</td></tr>'; return; }
-      snap.forEach(d => {
-        const data = d.data();
-        const tr = document.createElement('tr');
-        addCell(tr, studentsMap[data.studentId] || data.studentId);
-        addCell(tr, coursesMap[data.courseId] || data.courseId);
-        addBadgeCell(tr, data.status, data.status === 'Enrolled' ? 'success' : 'warning');
-        addCell(tr, data.semester || '—');
-        addCell(tr, formatDate(data.enrollmentDate));
-
-        const actionTd = document.createElement('td');
-        actionTd.style.display = 'flex';
-        actionTd.style.gap = 'var(--space-2)';
-
-        // Toggle status button
-        if (data.status === 'Pending') {
-          const approveBtn = document.createElement('button');
-          approveBtn.className = 'btn btn-primary btn-sm';
-          approveBtn.textContent = 'Approve';
-          approveBtn.addEventListener('click', async () => {
-            await updateDoc(doc(db, 'enrollments', d.id), { status: 'Enrolled' });
-            showToast('Enrollment approved!', 'success');
-            loadData();
-          });
-          actionTd.appendChild(approveBtn);
+      try {
+        const enrollments = await getAllEnrollments();
+        tbody.innerHTML = '';
+        if (enrollments.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No enrollments yet.</td></tr>';
+          return;
         }
 
-        const delBtn = document.createElement('button');
-        delBtn.className = 'btn btn-danger btn-sm';
-        delBtn.textContent = 'Delete';
-        delBtn.addEventListener('click', async () => {
-          if (confirm('Delete this enrollment?')) {
-            await deleteDoc(doc(db, 'enrollments', d.id));
-            showToast('Enrollment deleted', 'success');
-            loadData();
+        enrollments.forEach(enrollment => {
+          const tr = document.createElement('tr');
+          addCell(tr, usersMap[enrollment.studentId]?.name || enrollment.studentId);
+          addCell(tr, coursesMap[enrollment.courseId]?.name || enrollment.courseId);
+          addBadgeCell(tr, enrollment.status, enrollment.status === 'Enrolled' ? 'success' : 'warning');
+          addCell(tr, enrollment.semester || '—');
+          addCell(tr, formatDate(enrollment.enrollmentDate));
+
+          const actionTd = document.createElement('td');
+          actionTd.style.display = 'flex';
+          actionTd.style.gap = 'var(--space-2)';
+
+          if (enrollment.status === 'Pending') {
+            const approveBtn = document.createElement('button');
+            approveBtn.className = 'btn btn-primary btn-sm';
+            approveBtn.textContent = 'Approve';
+            approveBtn.addEventListener('click', async () => {
+              try {
+                await approveEnrollment(enrollment.id);
+                showToast('Enrollment approved!', 'success');
+                loadData();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+            actionTd.appendChild(approveBtn);
           }
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-danger btn-sm';
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', async () => {
+            if (confirm('Delete this enrollment?')) {
+              try {
+                await dropEnrollment(enrollment.id);
+                showToast('Enrollment deleted', 'success');
+                loadData();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            }
+          });
+          actionTd.appendChild(delBtn);
+          tr.appendChild(actionTd);
+          tbody.appendChild(tr);
         });
-        actionTd.appendChild(delBtn);
-        tr.appendChild(actionTd);
-        tbody.appendChild(tr);
-      });
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" class="table-empty text-error">Error loading data.</td></tr>';
+      }
     }
 
     form.addEventListener('submit', async (e) => {
@@ -172,11 +199,13 @@
       const studentId = studentSelect.value;
       const courseId = courseSelect.value;
       const status = document.getElementById('status').value;
-      const enrollmentDate = document.getElementById('enrollmentDate').value || new Date().toISOString().split('T')[0];
+      const date = document.getElementById('enrollmentDate').value || new Date().toISOString();
       const semester = document.getElementById('semester').value;
+
       if (!studentId || !courseId) return;
+
       try {
-        await addDoc(collection(db, 'enrollments'), { studentId, courseId, status, enrollmentDate, semester, createdAt: new Date().toISOString() });
+        await enrollStudent(studentId, courseId, semester, status, date);
         showToast('Enrollment added!', 'success');
         form.reset();
         document.getElementById('enrollmentDate').valueAsDate = new Date();
@@ -186,7 +215,7 @@
       }
     });
 
-    loadData();
+    initialize();
   </script>
 
 </body>

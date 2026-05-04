@@ -49,9 +49,7 @@
     import { requireAuth } from '/js/guards.js';
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, query, where, getDocs }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getAllStudents } from '/js/services/user.service.js';
     import { addCell, formatDate, formatPhone } from '/js/utils.js';
 
     renderFooter();
@@ -60,31 +58,34 @@
 
     const tbody = document.getElementById('table-body');
 
-    try {
-      const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
-      tbody.innerHTML = '';
-      document.getElementById('count-badge').textContent = `${snap.size} students`;
+    async function loadData() {
+      try {
+        const students = await getAllStudents();
+        tbody.innerHTML = '';
+        document.getElementById('count-badge').textContent = `${students.length} students`;
 
-      if (snap.empty) {
-        tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No students registered yet.</td></tr>';
-        return;
+        if (students.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No students registered yet.</td></tr>';
+          return;
+        }
+
+        students.forEach(student => {
+          const tr = document.createElement('tr');
+          addCell(tr, student.name);
+          addCell(tr, student.email);
+          addCell(tr, formatPhone(student.phone));
+          addCell(tr, student.semester ? `Sem ${student.semester}` : '—');
+          addCell(tr, formatDate(student.dob));
+          addCell(tr, student.address);
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="6" class="table-empty text-error">Failed to load students.</td></tr>';
       }
-
-      snap.forEach(d => {
-        const data = d.data();
-        const tr = document.createElement('tr');
-        addCell(tr, data.name);
-        addCell(tr, data.email);
-        addCell(tr, formatPhone(data.phone));
-        addCell(tr, data.semester ? `Sem ${data.semester}` : '—');
-        addCell(tr, formatDate(data.dob));
-        addCell(tr, data.address);
-        tbody.appendChild(tr);
-      });
-    } catch (err) {
-      console.error(err);
-      tbody.innerHTML = '<tr><td colspan="6" class="table-empty text-error">Failed to load students.</td></tr>';
     }
+
+    loadData();
   </script>
 
 </body>

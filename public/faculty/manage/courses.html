@@ -53,9 +53,7 @@
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getAllCourses, createCourse, deleteCourse } from '/js/services/course.service.js';
     import { formatDate, addCell } from '/js/utils.js';
 
     renderFooter();
@@ -66,29 +64,35 @@
     const form = document.getElementById('add-form');
 
     async function loadData() {
-      const snap = await getDocs(query(collection(db, 'courses'), orderBy('createdAt', 'desc')));
-      tbody.innerHTML = '';
-      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No courses yet.</td></tr>'; return; }
-      snap.forEach(d => {
-        const data = d.data();
-        const tr = document.createElement('tr');
-        addCell(tr, data.name);
-        addCell(tr, formatDate(data.createdAt));
-        const actionTd = document.createElement('td');
-        const delBtn = document.createElement('button');
-        delBtn.className = 'btn btn-danger btn-sm';
-        delBtn.textContent = 'Delete';
-        delBtn.addEventListener('click', async () => {
-          if (confirm('Delete this course?')) {
-            await deleteDoc(doc(db, 'courses', d.id));
-            showToast('Course deleted', 'success');
-            loadData();
-          }
+      try {
+        const courses = await getAllCourses();
+        tbody.innerHTML = '';
+        if (courses.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No courses yet.</td></tr>';
+          return;
+        }
+        courses.forEach(course => {
+          const tr = document.createElement('tr');
+          addCell(tr, course.name);
+          addCell(tr, formatDate(course.createdAt));
+          const actionTd = document.createElement('td');
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-danger btn-sm';
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', async () => {
+            if (confirm('Delete this course?')) {
+              await deleteCourse(course.id);
+              showToast('Course deleted', 'success');
+              loadData();
+            }
+          });
+          actionTd.appendChild(delBtn);
+          tr.appendChild(actionTd);
+          tbody.appendChild(tr);
         });
-        actionTd.appendChild(delBtn);
-        tr.appendChild(actionTd);
-        tbody.appendChild(tr);
-      });
+      } catch (err) {
+        showToast('Error loading courses: ' + err.message, 'error');
+      }
     }
 
     form.addEventListener('submit', async (e) => {
@@ -96,7 +100,7 @@
       const name = document.getElementById('courseName').value.trim();
       if (!name) return;
       try {
-        await addDoc(collection(db, 'courses'), { name, createdAt: new Date().toISOString() });
+        await createCourse(name);
         showToast('Course added!', 'success');
         form.reset();
         loadData();
