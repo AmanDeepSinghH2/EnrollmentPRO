@@ -45,9 +45,8 @@
     import { requireAuth } from '/js/guards.js';
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, query, where, getDocs, doc, getDoc, orderBy }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getStudentEnrollments } from '/js/services/enrollment.service.js';
+    import { buildCourseMap } from '/js/services/course.service.js';
     import { formatDate, addCell, addBadgeCell } from '/js/utils.js';
 
     renderFooter();
@@ -56,41 +55,37 @@
 
     const tbody = document.getElementById('enrollment-tbody');
 
-    try {
-      const q = query(
-        collection(db, 'enrollments'),
-        where('studentId', '==', user.uid)
-      );
-      const snap = await getDocs(q);
-      tbody.innerHTML = '';
+    async function loadData() {
+      try {
+        const [enrollments, coursesMap] = await Promise.all([
+          getStudentEnrollments(user.uid),
+          buildCourseMap()
+        ]);
 
-      if (snap.empty) {
-        tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No enrollment records found.</td></tr>';
-        return;
-      }
-
-      for (const d of snap.docs) {
-        const data = d.data();
-        const tr = document.createElement('tr');
-
-        // Get course name
-        let courseName = '—';
-        if (data.courseId) {
-          const courseDoc = await getDoc(doc(db, 'courses', data.courseId));
-          if (courseDoc.exists()) courseName = courseDoc.data().name;
+        tbody.innerHTML = '';
+        if (enrollments.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No enrollment records found.</td></tr>';
+          return;
         }
 
-        addCell(tr, courseName);
-        addBadgeCell(tr, data.status || 'Pending', data.status === 'Enrolled' ? 'success' : 'warning');
-        addCell(tr, formatDate(data.enrollmentDate));
-        addCell(tr, data.semester || '—');
+        enrollments.forEach(data => {
+          const tr = document.createElement('tr');
+          const courseName = coursesMap[data.courseId]?.name || '—';
 
-        tbody.appendChild(tr);
+          addCell(tr, courseName);
+          addBadgeCell(tr, data.status || 'Pending', data.status === 'Enrolled' ? 'success' : 'warning');
+          addCell(tr, formatDate(data.enrollmentDate));
+          addCell(tr, data.semester || '—');
+
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="4" class="table-empty text-error">Failed to load enrollment data.</td></tr>';
       }
-    } catch (err) {
-      console.error(err);
-      tbody.innerHTML = '<tr><td colspan="4" class="table-empty text-error">Failed to load enrollment data.</td></tr>';
     }
+
+    loadData();
   </script>
 
 </body>

@@ -47,9 +47,9 @@
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, query, where, getDocs, doc, getDoc, deleteDoc }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getStudentEnrollments, dropEnrollment } from '/js/services/enrollment.service.js';
+    import { buildCourseMap } from '/js/services/course.service.js';
+    import { getStudentGrades } from '/js/services/grade.service.js';
     import { formatDate, addCell, addBadgeCell } from '/js/utils.js';
 
     renderFooter();
@@ -60,38 +60,24 @@
 
     async function loadCourses() {
       try {
-        // Get all enrollments
-        const enrollSnap = await getDocs(
-          query(collection(db, 'enrollments'), where('studentId', '==', user.uid))
-        );
+        const [enrollments, grades, coursesMap] = await Promise.all([
+          getStudentEnrollments(user.uid),
+          getStudentGrades(user.uid),
+          buildCourseMap()
+        ]);
 
-        // Get all grades for this student
-        const gradeSnap = await getDocs(
-          query(collection(db, 'grades'), where('studentId', '==', user.uid))
-        );
         const gradesMap = {};
-        gradeSnap.forEach(d => {
-          const g = d.data();
-          gradesMap[g.courseId] = g.grade;
-        });
+        grades.forEach(g => gradesMap[g.courseId] = g.grade);
 
         tbody.innerHTML = '';
-
-        if (enrollSnap.empty) {
+        if (enrollments.length === 0) {
           tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No courses enrolled yet. Browse the catalog to get started.</td></tr>';
           return;
         }
 
-        for (const d of enrollSnap.docs) {
-          const data = d.data();
+        enrollments.forEach(data => {
           const tr = document.createElement('tr');
-
-          // Get course name
-          let courseName = '—';
-          if (data.courseId) {
-            const courseDoc = await getDoc(doc(db, 'courses', data.courseId));
-            if (courseDoc.exists()) courseName = courseDoc.data().name;
-          }
+          const courseName = coursesMap[data.courseId]?.name || '—';
 
           addCell(tr, courseName);
           addBadgeCell(tr, data.status || 'Pending', data.status === 'Enrolled' ? 'success' : 'warning');
@@ -115,20 +101,15 @@
           dropBtn.className = 'btn btn-danger btn-sm';
           dropBtn.textContent = 'Drop';
           
-          const enrollmentId = d.id;
-          const currentCourseName = courseName;
-
           dropBtn.onclick = async () => {
-            if (!confirm(`Are you sure you want to drop ${currentCourseName}? This action cannot be undone.`)) return;
+            if (!confirm(`Are you sure you want to drop ${courseName}? This action cannot be undone.`)) return;
 
             try {
               dropBtn.disabled = true;
               dropBtn.textContent = 'Dropping...';
               
-              await deleteDoc(doc(db, 'enrollments', enrollmentId));
-              showToast(`Successfully dropped ${currentCourseName}`, 'success');
-              
-              // Refresh the list
+              await dropEnrollment(data.id);
+              showToast(`Successfully dropped ${courseName}`, 'success');
               loadCourses();
             } catch (err) {
               console.error('Drop error:', err);
@@ -140,9 +121,8 @@
           
           actionTd.appendChild(dropBtn);
           tr.appendChild(actionTd);
-
           tbody.appendChild(tr);
-        }
+        });
       } catch (err) {
         console.error('Load courses error:', err);
         tbody.innerHTML = '<tr><td colspan="5" class="table-empty text-error">Failed to load courses. Check your connection.</td></tr>';
