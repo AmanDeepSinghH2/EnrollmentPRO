@@ -31,18 +31,20 @@ export async function getAllEnrollments() {
 }
 
 /**
- * Enroll a student in a course (pending status).
+ * Enroll a student in a course.
  * @param {string} studentId
  * @param {string} courseId
  * @param {string} semester
+ * @param {string} status 'Pending' or 'Enrolled'
+ * @param {string} date Optional enrollment date
  * @returns {Promise<string>} new enrollment document ID
  */
-export async function enrollStudent(studentId, courseId, semester) {
+export async function enrollStudent(studentId, courseId, semester, status = 'Pending', date = null) {
   const ref = await addDoc(collection(db, 'enrollments'), {
     studentId,
     courseId,
-    status: 'Pending',
-    enrollmentDate: new Date().toISOString(),
+    status,
+    enrollmentDate: date || new Date().toISOString(),
     semester: semester || '1',
     createdAt: new Date().toISOString()
   });

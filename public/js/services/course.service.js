@@ -52,13 +52,14 @@ export async function getCoursesForFaculty(facultyId) {
 }
 
 /**
- * Build a map of courseId → courseName from a list of courses.
+ * Build a map of courseId → course object from a list of courses.
  * Useful for efficient name resolution in tables.
+ * @param {Array} courses Optional list of courses to use.
  * @returns {Promise<Object>}
  */
-export async function buildCourseMap() {
-  const courses = await getAllCourses();
+export async function buildCourseMap(courses) {
+  const list = courses || await getAllCourses();
   const map = {};
-  courses.forEach(c => { map[c.id] = c.name; });
+  list.forEach(c => { map[c.id] = c; });
   return map;
 }

@@ -48,7 +48,7 @@
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
     import { getAllCourses } from '/js/services/course.service.js';
-    import { enrollStudent, isAlreadyEnrolled } from '/js/services/enrollment.service.js';
+    import { enrollStudent, getStudentEnrollments } from '/js/services/enrollment.service.js';
     import { addCell } from '/js/utils.js';
 
     renderFooter();
@@ -59,7 +59,13 @@
 
     async function loadCatalog() {
       try {
-        const courses = await getAllCourses();
+        const [courses, enrollments] = await Promise.all([
+          getAllCourses(),
+          getStudentEnrollments(user.uid)
+        ]);
+
+        const enrollmentMap = {};
+        enrollments.forEach(e => { enrollmentMap[e.courseId] = true; });
 
         tbody.innerHTML = '';
         if (courses.length === 0) {
@@ -67,8 +73,8 @@
           return;
         }
 
-        for (const course of courses) {
-          const alreadyEnrolled = await isAlreadyEnrolled(user.uid, course.id);
+        courses.forEach(course => {
+          const alreadyEnrolled = enrollmentMap[course.id];
           const tr = document.createElement('tr');
 
           addCell(tr, course.name);
@@ -84,14 +90,14 @@
             const enrollBtn = document.createElement('button');
             enrollBtn.className = 'btn btn-primary btn-sm';
             enrollBtn.textContent = 'Enroll Now';
-            enrollBtn.onclick = () => enrollInCourse(course.id, course.name);
+            enrollBtn.addEventListener('click', () => enrollInCourse(course.id, course.name));
             actionTd.appendChild(enrollBtn);
           }
           tr.appendChild(actionTd);
           tbody.appendChild(tr);
-        }
+        });
       } catch (err) {
-        console.error(err);
+        console.error('Load catalog error:', err);
         tbody.innerHTML = '<tr><td colspan="3" class="table-empty text-error">Failed to load course catalog.</td></tr>';
       }
     }
@@ -103,7 +109,7 @@
         showToast(`Enrollment request sent for ${courseName}`, 'success');
         loadCatalog();
       } catch (err) {
-        console.error(err);
+        console.error('Enroll error:', err);
         showToast('Failed to enroll: ' + err.message, 'error');
       }
     }

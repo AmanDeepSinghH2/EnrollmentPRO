@@ -77,7 +77,8 @@
 
         enrollments.forEach(data => {
           const tr = document.createElement('tr');
-          const courseName = coursesMap[data.courseId]?.name || '—';
+          const courseObj = coursesMap[data.courseId];
+          const courseName = courseObj ? courseObj.name : '—';
 
           addCell(tr, courseName);
           addBadgeCell(tr, data.status || 'Pending', data.status === 'Enrolled' ? 'success' : 'warning');
@@ -101,7 +102,7 @@
           dropBtn.className = 'btn btn-danger btn-sm';
           dropBtn.textContent = 'Drop';
           
-          dropBtn.onclick = async () => {
+          dropBtn.addEventListener('click', async () => {
             if (!confirm(`Are you sure you want to drop ${courseName}? This action cannot be undone.`)) return;
 
             try {
@@ -113,11 +114,11 @@
               loadCourses();
             } catch (err) {
               console.error('Drop error:', err);
-              showToast('Failed to drop course. Please try again.', 'error');
+              showToast('Failed to drop course: ' + err.message, 'error');
               dropBtn.disabled = false;
               dropBtn.textContent = 'Drop';
             }
-          };
+          });
           
           actionTd.appendChild(dropBtn);
           tr.appendChild(actionTd);
