@@ -31,6 +31,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
       <a href="/student/browse-courses.html" class="nav-link ${activePage === 'browse' ? 'nav-link--active' : ''}">Browse Courses</a>
       <a href="/student/my-courses.html" class="nav-link ${activePage === 'courses' ? 'nav-link--active' : ''}">My Courses</a>
       <a href="/student/enrollment-status.html" class="nav-link ${activePage === 'enrollment' ? 'nav-link--active' : ''}">Status</a>
+      <a href="/student/notice-board.html" class="nav-link ${activePage === 'notices' ? 'nav-link--active' : ''}">Notices</a>
       <button class="nav-link nav-link--logout" id="logout-btn">Logout</button>
     `;
   } else if (role === 'faculty') {
@@ -39,6 +40,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
       <div class="nav-dropdown">
         <button class="nav-link" id="tools-toggle">Management ▾</button>
         <div class="nav-dropdown-menu" id="tools-menu">
+          <a href="/faculty/manage/notices.html" class="nav-dropdown-link">📢 Notices</a>
           <a href="/faculty/manage/students.html" class="nav-dropdown-link">📋 Students</a>
           <a href="/faculty/manage/courses.html" class="nav-dropdown-link">📚 Courses</a>
           <a href="/faculty/manage/enrollments.html" class="nav-dropdown-link">📝 Enrollments</a>
@@ -50,6 +52,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
   } else if (role === 'admin') {
     navLinks = `
       <a href="/admin/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Admin Panel</a>
+      <a href="/faculty/manage/notices.html" class="nav-link">Notices</a>
       <a href="/faculty/manage/students.html" class="nav-link">Students</a>
       <a href="/faculty/manage/courses.html" class="nav-link">Courses</a>
       <a href="/faculty/manage/enrollments.html" class="nav-link">Enrollments</a>

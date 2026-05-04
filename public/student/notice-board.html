@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notice Board — EnrollmentPRO</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    .notice-card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-5);
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    }
+    .notice-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .notice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-4);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: var(--space-3);
+    }
+    .notice-title {
+      font-size: var(--font-size-xl);
+      font-weight: 700;
+      color: var(--text-color);
+      margin: 0;
+    }
+    .notice-meta {
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: var(--space-1);
+    }
+    .notice-content {
+      font-size: var(--font-size-md);
+      line-height: 1.6;
+      color: var(--text-color);
+      white-space: pre-wrap;
+      margin-bottom: var(--space-4);
+    }
+    .notice-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      background-color: var(--primary-color);
+      color: white;
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      font-weight: 500;
+      transition: background-color var(--transition-fast);
+    }
+    .notice-link-btn:hover {
+      background-color: var(--primary-dark);
+    }
+    .notice-empty {
+      text-align: center;
+      padding: var(--space-8);
+      color: var(--text-muted);
+      background: var(--surface-color);
+      border-radius: var(--radius-lg);
+      border: 1px dashed var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">University Notice Board</h1>
+        <p class="page-subtitle">Stay updated with the latest announcements, requirements, and forms from the faculty.</p>
+      </div>
+
+      <div id="notices-container" class="animate-fade-in-up">
+        <div class="notice-empty">
+          <div class="spinner" style="margin: 0 auto var(--space-4);"></div>
+          Loading notices...
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { getAllNotices } from '/js/services/notice.service.js';
+    import { getAllFaculty, buildUserMap } from '/js/services/user.service.js';
+    import { formatDate } from '/js/utils.js';
+
+    renderFooter();
+    const { user } = await requireAuth('student');
+    renderHeader(user, 'student', 'notices');
+
+    const container = document.getElementById('notices-container');
+
+    async function loadNoticeBoard() {
+      try {
+        const [notices, facultyList] = await Promise.all([
+          getAllNotices(),
+          getAllFaculty()
+        ]);
+        const facultyMap = buildUserMap(facultyList);
+
+        container.innerHTML = '';
+
+        if (notices.length === 0) {
+          container.innerHTML = `
+            <div class="notice-empty">
+              <div style="font-size: 3rem; margin-bottom: var(--space-3);">📭</div>
+              <h3 style="margin-bottom: var(--space-2);">No active notices</h3>
+              <p>You're all caught up! Check back later for announcements.</p>
+            </div>
+          `;
+          return;
+        }
+
+        notices.forEach(notice => {
+          const authorName = facultyMap[notice.authorId]?.name || 'Faculty Member';
+          
+          const card = document.createElement('div');
+          card.className = 'notice-card';
+          
+          let linkHTML = '';
+          if (notice.link) {
+            linkHTML = `
+              <div style="margin-top: var(--space-4);">
+                <a href="${notice.link}" target="_blank" class="notice-link-btn">
+                  🔗 Open Link / Form
+                </a>
+              </div>
+            `;
+          }
+
+          card.innerHTML = `
+            <div class="notice-header">
+              <h2 class="notice-title">${notice.title}</h2>
+              <div class="notice-meta">
+                <span style="font-weight: 500; color: var(--primary-color);">👨‍🏫 ${authorName}</span>
+                <span>${formatDate(notice.createdAt)}</span>
+              </div>
+            </div>
+            <div class="notice-content">${notice.content}</div>
+            ${linkHTML}
+          `;
+          
+          container.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error('Error loading notices:', err);
+        container.innerHTML = `
+          <div class="notice-empty" style="color: var(--error-color); border-color: var(--error-color);">
+            Failed to load the notice board. Please try refreshing the page.
+          </div>
+        `;
+      }
+    }
+
+    loadNoticeBoard();
+  </script>
+
+</body>
+</html>

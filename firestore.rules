@@ -63,5 +63,11 @@ service cloud.firestore {
       );
       allow write: if isRole('faculty');
     }
+
+    // Notices: authenticated users can read, faculty can write
+    match /notices/{noticeId} {
+      allow read: if isAuth();
+      allow write: if isRole('faculty');
+    }
   }
 }

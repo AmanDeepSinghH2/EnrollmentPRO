@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Notices — EnrollmentPRO</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="page-title-container">
+        <h1 class="page-title">Manage Notices</h1>
+        <p class="page-subtitle">Publish announcements and important links to the student notice board.</p>
+      </div>
+
+      <div class="form-card mb-8 animate-fade-in-up">
+        <h2 style="font-size:var(--font-size-lg); font-weight:700; margin-bottom:var(--space-5);">Publish New Notice</h2>
+        <form id="add-form">
+          <div class="form-group">
+            <label for="title" class="form-label form-label--required">Notice Title</label>
+            <input type="text" id="title" class="form-input" placeholder="e.g., Final Project Submission Guidelines" required />
+          </div>
+          <div class="form-group">
+            <label for="content" class="form-label form-label--required">Message Content</label>
+            <textarea id="content" class="form-input" rows="4" placeholder="Enter the details of your notice here..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="link" class="form-label">Important Link (Optional)</label>
+            <input type="url" id="link" class="form-input" placeholder="e.g., https://forms.gle/..." />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Publish Notice</button>
+        </form>
+      </div>
+
+      <div class="table-wrapper animate-fade-in-up">
+        <div class="table-header">
+          <span>📢 Published Notices</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="notices-tbody">
+              <tr><td colspan="4" class="table-empty">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { showToast } from '/js/components/toast.js';
+    import { getAllNotices, createNotice, deleteNotice } from '/js/services/notice.service.js';
+    import { getAllFaculty, buildUserMap } from '/js/services/user.service.js';
+    import { addCell, formatDate } from '/js/utils.js';
+
+    renderFooter();
+    const { user, profile } = await requireAuth('faculty');
+    renderHeader(user, 'faculty', 'notices');
+
+    const tbody = document.getElementById('notices-tbody');
+    const form = document.getElementById('add-form');
+
+    let facultyMap = {};
+
+    async function initialize() {
+      try {
+        const facultyList = await getAllFaculty();
+        facultyMap = buildUserMap(facultyList);
+        loadNotices();
+      } catch (err) {
+        showToast('Failed to initialize: ' + err.message, 'error');
+      }
+    }
+
+    async function loadNotices() {
+      try {
+        const notices = await getAllNotices();
+        tbody.innerHTML = '';
+        if (notices.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No notices published yet.</td></tr>';
+          return;
+        }
+
+        notices.forEach(notice => {
+          const tr = document.createElement('tr');
+          addCell(tr, formatDate(notice.createdAt));
+          
+          // Title Cell with link integration
+          const titleTd = document.createElement('td');
+          if (notice.link) {
+            const a = document.createElement('a');
+            a.href = notice.link;
+            a.target = '_blank';
+            a.textContent = notice.title;
+            a.style.color = 'var(--primary-color)';
+            a.style.textDecoration = 'underline';
+            titleTd.appendChild(a);
+          } else {
+            titleTd.textContent = notice.title;
+          }
+          tr.appendChild(titleTd);
+
+          const authorName = facultyMap[notice.authorId]?.name || notice.authorId;
+          addCell(tr, authorName);
+
+          const actionTd = document.createElement('td');
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-danger btn-sm';
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to delete this notice?')) {
+              try {
+                await deleteNotice(notice.id);
+                showToast('Notice deleted successfully', 'success');
+                loadNotices();
+              } catch (err) {
+                showToast('Error deleting: ' + err.message, 'error');
+              }
+            }
+          });
+          actionTd.appendChild(delBtn);
+          tr.appendChild(actionTd);
+
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="4" class="table-empty text-error">Failed to load notices.</td></tr>';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('title').value;
+      const content = document.getElementById('content').value;
+      const link = document.getElementById('link').value;
+
+      try {
+        await createNotice(title, content, link, user.uid);
+        showToast('Notice published successfully!', 'success');
+        form.reset();
+        loadNotices();
+      } catch (err) {
+        showToast('Error publishing notice: ' + err.message, 'error');
+      }
+    });
+
+    initialize();
+  </script>
+
+</body>
+</html>
