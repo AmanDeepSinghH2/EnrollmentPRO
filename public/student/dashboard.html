@@ -110,6 +110,9 @@
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
     import { getInitials, formatDate, formatPhone } from '/js/utils.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, query, where, getDocs, doc, getDoc }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
     renderFooter();
 
@@ -126,14 +129,65 @@
     document.getElementById('profile-dob').textContent = formatDate(profile.dob);
     document.getElementById('profile-semester').textContent = profile.semester ? `Semester ${profile.semester}` : '—';
     document.getElementById('profile-address').textContent = profile.address || '—';
-    document.getElementById('stat-semester').textContent = profile.semester || '—';
+    document.getElementById('stat-semester').textContent = profile.semester ? `Sem ${profile.semester}` : '—';
 
-    // Placeholder for migrated data
-    document.getElementById('stat-courses').textContent = '...';
-    document.getElementById('stat-status').textContent = 'Migrating...';
-    document.getElementById('courses-list').innerHTML = '<li class="text-muted" style="text-align:center; padding:var(--space-4);">Course data is currently being migrated to the new secure backend.</li>';
-  </script>
+    // Load real enrollment stats
+    try {
+      const enrollSnap = await getDocs(
+        query(collection(db, 'enrollments'), where('studentId', '==', user.uid))
+      );
+
+      const enrollments = [];
+      enrollSnap.forEach(d => enrollments.push(d.data()));
+
+      const enrolledCount = enrollments.filter(e => e.status === 'Enrolled').length;
+      const hasActive = enrollments.some(e => e.status === 'Enrolled');
+
+      document.getElementById('stat-courses').textContent = enrollments.length;
+      document.getElementById('stat-status').textContent = hasActive
+        ? 'Active'
+        : (enrollments.length > 0 ? 'Pending' : 'Not Enrolled');
+
+      // Load course names and render list
+      const coursesList = document.getElementById('courses-list');
+      if (enrollments.length === 0) {
+        coursesList.innerHTML = `
+          <li style="text-align:center; padding:var(--space-4); color:var(--color-text-muted);">
+            No courses enrolled yet.
+            <a href="/student/browse-courses.html" style="color:var(--color-accent); font-weight:600;">Browse catalog →</a>
+          </li>`;
+      } else {
+        coursesList.innerHTML = '';
+        for (const enrollment of enrollments.slice(0, 5)) {
+          let courseName = enrollment.courseId || '—';
+          if (enrollment.courseId) {
+            const courseDoc = await getDoc(doc(db, 'courses', enrollment.courseId));
+            if (courseDoc.exists()) courseName = courseDoc.data().name;
+          }
+          const li = document.createElement('li');
+          li.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:var(--space-3); background:var(--color-surface-alt); border-radius:var(--radius-md);';
+          li.innerHTML = `
+            <span style="font-size:var(--font-size-sm); font-weight:500;">${courseName}</span>
+            <span class="badge badge-${enrollment.status === 'Enrolled' ? 'success' : 'warning'}">${enrollment.status || 'Pending'}</span>
+          `;
+          coursesList.appendChild(li);
+        }
+        if (enrollments.length > 5) {
+          const li = document.createElement('li');
+          li.style.cssText = 'text-align:center; padding:var(--space-2);';
+          li.innerHTML = `<a href="/student/my-courses.html" style="color:var(--color-accent); font-size:var(--font-size-sm);">View all ${enrollments.length} courses →</a>`;
+          coursesList.appendChild(li);
+        }
+      }
+    } catch (err) {
+      console.error('Dashboard stats error:', err);
+      document.getElementById('stat-courses').textContent = '—';
+      document.getElementById('stat-status').textContent = '—';
+      document.getElementById('courses-list').innerHTML =
+        '<li style="text-align:center; padding:var(--space-4); color:var(--color-error);">Failed to load course data. Check your connection.</li>';
+    }
   </script>
 
 </body>
 </html>
+

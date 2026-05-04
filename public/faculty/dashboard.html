@@ -107,6 +107,9 @@
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
     import { getInitials, formatPhone } from '/js/utils.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, query, where, getDocs, doc, getDoc }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
     renderFooter();
     const { user, profile } = await requireAuth('faculty');
@@ -119,15 +122,59 @@
     document.getElementById('profile-email').textContent = profile.email || '—';
     document.getElementById('profile-phone').textContent = formatPhone(profile.phone);
 
-    // Placeholder for migrated data
-    document.getElementById('stat-courses').textContent = '...';
-    document.getElementById('stat-students').textContent = '...';
-    document.getElementById('stat-enrollments').textContent = '...';
-    document.getElementById('stat-pending').textContent = '...';
-    
-    document.getElementById('courses-list').innerHTML = '<li class="text-muted" style="text-align:center; padding:var(--space-4);">Management data is currently being migrated to the new secure backend.</li>';
-  </script>
+    // Load real stats
+    try {
+      // Courses I'm assigned to
+      const myCoursesSnap = await getDocs(
+        query(collection(db, 'courseFaculty'), where('facultyId', '==', user.uid))
+      );
+      document.getElementById('stat-courses').textContent = myCoursesSnap.size;
+
+      // Total students
+      const studentsSnap = await getDocs(
+        query(collection(db, 'users'), where('role', '==', 'student'))
+      );
+      document.getElementById('stat-students').textContent = studentsSnap.size;
+
+      // All enrollments
+      const enrollSnap = await getDocs(collection(db, 'enrollments'));
+      let pendingCount = 0;
+      enrollSnap.forEach(d => { if (d.data().status === 'Pending') pendingCount++; });
+      document.getElementById('stat-enrollments').textContent = enrollSnap.size;
+      document.getElementById('stat-pending').textContent = pendingCount;
+
+      // Courses teaching list
+      const coursesList = document.getElementById('courses-list');
+      if (myCoursesSnap.empty) {
+        coursesList.innerHTML = `
+          <li style="text-align:center; padding:var(--space-4); color:var(--color-text-muted);">
+            No courses assigned yet. Use <a href="/faculty/manage/course-faculty.html" style="color:var(--color-accent); font-weight:600;">Course-Faculty</a> to get assigned.
+          </li>`;
+      } else {
+        coursesList.innerHTML = '';
+        for (const cfDoc of myCoursesSnap.docs) {
+          const data = cfDoc.data();
+          let courseName = data.courseId || '—';
+          if (data.courseId) {
+            const courseDoc = await getDoc(doc(db, 'courses', data.courseId));
+            if (courseDoc.exists()) courseName = courseDoc.data().name;
+          }
+          const li = document.createElement('li');
+          li.style.cssText = 'display:flex; align-items:center; padding:var(--space-3); background:var(--color-surface-alt); border-radius:var(--radius-md); font-size:var(--font-size-sm); font-weight:500; gap:var(--space-3);';
+          li.innerHTML = `<span>📚</span><span>${courseName}</span>`;
+          coursesList.appendChild(li);
+        }
+      }
+    } catch (err) {
+      console.error('Dashboard stats error:', err);
+      ['stat-courses', 'stat-students', 'stat-enrollments', 'stat-pending'].forEach(id => {
+        document.getElementById(id).textContent = '—';
+      });
+      document.getElementById('courses-list').innerHTML =
+        '<li style="text-align:center; padding:var(--space-4); color:var(--color-error);">Failed to load data. Check your connection.</li>';
+    }
   </script>
 
 </body>
 </html>
+

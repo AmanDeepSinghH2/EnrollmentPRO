@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Browse Courses — EnrollmentPRO</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
@@ -46,9 +47,8 @@
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, query, getDocs, addDoc, where, serverTimestamp }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { getAllCourses } from '/js/services/course.service.js';
+    import { enrollStudent, isAlreadyEnrolled } from '/js/services/enrollment.service.js';
     import { addCell } from '/js/utils.js';
 
     renderFooter();
@@ -59,32 +59,23 @@
 
     async function loadCatalog() {
       try {
-        // Get all courses
-        const coursesSnap = await getDocs(collection(db, 'courses'));
-        
-        // Get student's current enrollments to prevent double enrollment
-        const enrollSnap = await getDocs(
-          query(collection(db, 'enrollments'), where('studentId', '==', user.uid))
-        );
-        const enrolledCourseIds = new Set();
-        enrollSnap.forEach(d => enrolledCourseIds.add(d.data().courseId));
+        const courses = await getAllCourses();
 
         tbody.innerHTML = '';
-
-        if (coursesSnap.empty) {
+        if (courses.length === 0) {
           tbody.innerHTML = '<tr><td colspan="3" class="table-empty">No courses found in the catalog.</td></tr>';
           return;
         }
 
-        coursesSnap.forEach(d => {
-          const course = d.data();
+        for (const course of courses) {
+          const alreadyEnrolled = await isAlreadyEnrolled(user.uid, course.id);
           const tr = document.createElement('tr');
-          
+
           addCell(tr, course.name);
-          addCell(tr, d.id);
+          addCell(tr, course.id);
 
           const actionTd = document.createElement('td');
-          if (enrolledCourseIds.has(d.id)) {
+          if (alreadyEnrolled) {
             const span = document.createElement('span');
             span.className = 'badge badge-success';
             span.textContent = 'Enrolled';
@@ -93,12 +84,12 @@
             const enrollBtn = document.createElement('button');
             enrollBtn.className = 'btn btn-primary btn-sm';
             enrollBtn.textContent = 'Enroll Now';
-            enrollBtn.onclick = () => enrollInCourse(d.id, course.name);
+            enrollBtn.onclick = () => enrollInCourse(course.id, course.name);
             actionTd.appendChild(enrollBtn);
           }
           tr.appendChild(actionTd);
           tbody.appendChild(tr);
-        });
+        }
       } catch (err) {
         console.error(err);
         tbody.innerHTML = '<tr><td colspan="3" class="table-empty text-error">Failed to load course catalog.</td></tr>';
@@ -106,17 +97,10 @@
     }
 
     async function enrollInCourse(courseId, courseName) {
-      if (!confirm(`Do you want to enroll in ${courseName}?`)) return;
-
+      if (!confirm(`Enroll in ${courseName}?`)) return;
       try {
-        await addDoc(collection(db, 'enrollments'), {
-          studentId: user.uid,
-          courseId: courseId,
-          status: 'Pending',
-          enrollmentDate: new Date().toISOString(),
-          semester: profile.semester || '1'
-        });
-        showToast(`Successfully requested enrollment for ${courseName}`, 'success');
+        await enrollStudent(user.uid, courseId, profile.semester || '1');
+        showToast(`Enrollment request sent for ${courseName}`, 'success');
         loadCatalog();
       } catch (err) {
         console.error(err);

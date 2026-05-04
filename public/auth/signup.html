@@ -96,8 +96,8 @@
 
   <script type="module">
     import { renderHeader } from '/js/components/header.js';
-    import { signup } from '/js/auth.js';
-    import { redirectIfAuth } from '/js/guards.js';
+    import { register } from '/js/auth.js';
+    import { publicOnly } from '/js/guards.js';
     import { showToast } from '/js/components/toast.js';
     import { getFriendlyError } from '/js/utils.js';
 
@@ -105,7 +105,7 @@
     renderHeader(null, null, '');
 
     // Redirect if already logged in
-    await redirectIfAuth();
+    await publicOnly();
 
     // Role toggle
     const roleInput = document.getElementById('role');
@@ -126,24 +126,35 @@
       roleInput.value = 'faculty';
       roleFacultyBtn.classList.add('active');
       roleStudentBtn.classList.remove('active');
+      studentFields.classList.add('hidden');
       facultyFields.classList.remove('hidden');
     });
 
     // Form handling
     const registerForm = document.getElementById('signup-form');
     const submitBtn = document.getElementById('submit-btn');
+    const errorMsg = document.getElementById('error-msg');
 
-    // Handle registration
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      const email = document.getElementById('signup-email').value.trim();
-      const password = document.getElementById('signup-password').value;
-      const role = document.getElementById('signup-role').value;
-      const name = document.getElementById('signup-name').value.trim();
 
-      // Basic validation
-      if (!email || !password || !name) {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+      const name = document.getElementById('name').value.trim();
+      const username = document.getElementById('username').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const dob = document.getElementById('dob').value;
+
+      // Build extra data
+      const extraData = { username, phone, dob, status: 'Active' };
+      if (role === 'student') {
+        extraData.address = document.getElementById('address').value.trim();
+        extraData.semester = document.getElementById('semester').value;
+      }
+
+      // Validation
+      if (!email || !password || !name || !username) {
         showToast('Please fill in all required fields', 'error');
         return;
       }
@@ -154,16 +165,12 @@
 
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner"></span> Creating account...';
+      errorMsg.style.display = 'none';
 
       try {
-        const { profile } = await register(email, password, role, name, {
-          createdAt: new Date().toISOString(),
-          status: 'Active'
-        });
-        
+        const { profile } = await register(email, password, role, name, extraData);
         showToast(`Account created for ${profile.name}!`, 'success');
-        
-        // Redirect based on role
+
         setTimeout(() => {
           window.location.href = role === 'student'
             ? '/student/dashboard.html'
@@ -174,7 +181,6 @@
         errorMsg.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.textContent = 'Create Account';
-        submitBtn.classList.remove('btn-loading');
       }
     });
   </script>

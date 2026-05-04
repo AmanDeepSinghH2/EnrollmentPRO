@@ -1346,3 +1346,100 @@ body::after {
     font-size: var(--font-size-2xl);
   }
 }
+
+
+/* ── Missing Token Definitions ──────────────────────────────────────── */
+/* These were referenced across files but not defined in :root */
+:root {
+  --gradient-card: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  --gradient-header: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+
+/* ── Page Subtitle ──────────────────────────────────────────────────── */
+/* Used in browse-courses.html and other page headers */
+.page-subtitle {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  margin-top: calc(-1 * var(--space-6));
+  margin-bottom: var(--space-6);
+}
+
+
+/* ── Spinner (inline button loading) ───────────────────────────────── */
+/* Overrides the 40px standalone spinner for inline use inside buttons */
+.btn .spinner,
+span.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+
+/* ── Modal / Confirm Dialog ─────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn var(--transition-fast) forwards;
+}
+
+.modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-8);
+  max-width: 420px;
+  width: 90%;
+  animation: scaleIn var(--transition-bounce) forwards;
+  border: 1px solid var(--color-border);
+}
+
+.modal-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+  color: var(--color-text);
+}
+
+.modal-body {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  margin-bottom: var(--space-6);
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+
+/* ── Table Action Cell Flex Fix ─────────────────────────────────────── */
+/* Prevents action td from being block which can break layout on narrow screens */
+td:has(.btn) {
+  white-space: nowrap;
+}
+
+/* ── Nav link logout button base fix ───────────────────────────────── */
+.nav-link--logout {
+  color: var(--color-text-muted);
+}
+
+.nav-link--logout:hover {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+

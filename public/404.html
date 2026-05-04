@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Page Not Found — EnrollmentPRO</title>
+  <meta name="description" content="The page you are looking for could not be found." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content" style="display:flex; align-items:center; justify-content:center; min-height:calc(100vh - var(--header-height) - 120px);">
+    <div style="text-align:center; padding:var(--space-12);">
+      <div style="font-size:6rem; margin-bottom:var(--space-6); animation: float 4s ease-in-out infinite alternate;">🎓</div>
+      <h1 style="font-size:var(--font-size-5xl); font-weight:900; letter-spacing:-0.04em; color:var(--color-primary); margin-bottom:var(--space-2);">404</h1>
+      <h2 style="font-size:var(--font-size-2xl); font-weight:700; margin-bottom:var(--space-4); color:var(--color-text-secondary);">Page Not Found</h2>
+      <p style="color:var(--color-text-muted); max-width:400px; margin:0 auto var(--space-8); line-height:1.7;">
+        The page you are looking for doesn't exist or may have been moved. Let's get you back on track.
+      </p>
+      <div style="display:flex; gap:var(--space-4); justify-content:center; flex-wrap:wrap;">
+        <a href="/index.html" class="btn btn-primary btn-lg">← Go Home</a>
+        <a href="/auth/signin.html" class="btn btn-secondary btn-lg">Sign In</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { onAuth, getUserProfile } from '/js/auth.js';
+
+    renderFooter();
+    onAuth(async (user) => {
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          renderHeader(user, profile.role, '');
+        } catch { renderHeader(null, null, ''); }
+      } else {
+        renderHeader(null, null, '');
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,6 +1,7 @@
 {
   "hosting": {
     "public": "public",
+    "cleanUrls": true,
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -20,6 +21,12 @@
         "headers": [
           { "key": "Cache-Control", "value": "public, max-age=86400" }
         ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/404.html"
       }
     ]
   },

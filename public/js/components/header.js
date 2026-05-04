@@ -28,6 +28,7 @@ export function renderHeader(user = null, role = null, activePage = '') {
   } else if (role === 'student') {
     navLinks = `
       <a href="/student/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Dashboard</a>
+      <a href="/student/browse-courses.html" class="nav-link ${activePage === 'browse' ? 'nav-link--active' : ''}">Browse Courses</a>
       <a href="/student/my-courses.html" class="nav-link ${activePage === 'courses' ? 'nav-link--active' : ''}">My Courses</a>
       <a href="/student/enrollment-status.html" class="nav-link ${activePage === 'enrollment' ? 'nav-link--active' : ''}">Status</a>
       <button class="nav-link nav-link--logout" id="logout-btn">Logout</button>
@@ -49,6 +50,9 @@ export function renderHeader(user = null, role = null, activePage = '') {
   } else if (role === 'admin') {
     navLinks = `
       <a href="/admin/dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'nav-link--active' : ''}">Admin Panel</a>
+      <a href="/faculty/manage/students.html" class="nav-link">Students</a>
+      <a href="/faculty/manage/courses.html" class="nav-link">Courses</a>
+      <a href="/faculty/manage/enrollments.html" class="nav-link">Enrollments</a>
       <button class="nav-link nav-link--logout" id="logout-btn">Logout</button>
     `;
   }
@@ -99,6 +103,13 @@ export function renderHeader(user = null, role = null, activePage = '') {
     mobileToggle.addEventListener('click', () => {
       headerNav.classList.toggle('open');
       mobileToggle.textContent = headerNav.classList.contains('open') ? '✕' : '☰';
+    });
+    // Close mobile nav when a link is clicked
+    headerNav.querySelectorAll('a, button:not(#mobile-menu-toggle)').forEach(el => {
+      el.addEventListener('click', () => {
+        headerNav.classList.remove('open');
+        mobileToggle.textContent = '☰';
+      });
     });
   }
 }

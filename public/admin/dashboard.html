@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard — EnrollmentPRO</title>
+  <meta name="description" content="Admin control panel for EnrollmentPRO." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="dashboard-header animate-fade-in-up">
+        <h1 class="dashboard-title">Admin Panel — <span class="text-primary" id="admin-name">...</span></h1>
+        <p class="dashboard-subtitle">System-wide management console</p>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="grid-4 mb-8 stagger">
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-students">—</div>
+          <div class="stat-label">Total Students</div>
+        </div>
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-faculty">—</div>
+          <div class="stat-label">Total Faculty</div>
+        </div>
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-courses">—</div>
+          <div class="stat-label">Total Courses</div>
+        </div>
+        <div class="card stat-card animate-fade-in-up">
+          <div class="stat-value" id="stat-enrollments">—</div>
+          <div class="stat-label">Total Enrollments</div>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <h2 style="font-size:var(--font-size-xl); font-weight:700; margin-bottom:var(--space-4);">Management Tools</h2>
+      <div class="grid-4 stagger">
+        <a href="/faculty/manage/students.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">📋</div>
+          <div class="action-card-title">Students</div>
+        </a>
+        <a href="/faculty/manage/faculty-list.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">👨‍🏫</div>
+          <div class="action-card-title">Faculty</div>
+        </a>
+        <a href="/faculty/manage/courses.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">📚</div>
+          <div class="action-card-title">Courses</div>
+        </a>
+        <a href="/faculty/manage/course-faculty.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">🔗</div>
+          <div class="action-card-title">Course–Faculty</div>
+        </a>
+        <a href="/faculty/manage/enrollments.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">📝</div>
+          <div class="action-card-title">Enrollments</div>
+        </a>
+        <a href="/faculty/manage/grades.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">🎓</div>
+          <div class="action-card-title">Grades</div>
+        </a>
+        <a href="/faculty/manage/student-parents.html" class="card action-card animate-fade-in-up">
+          <div class="action-card-icon">👪</div>
+          <div class="action-card-title">Student Parents</div>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script type="module">
+    import { requireAuth } from '/js/guards.js';
+    import { renderHeader } from '/js/components/header.js';
+    import { renderFooter } from '/js/components/footer.js';
+    import { getInitials } from '/js/utils.js';
+    import { db } from '/js/firebase-config.js';
+    import { collection, query, where, getDocs }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+
+    renderFooter();
+    const { user, profile } = await requireAuth('admin');
+    renderHeader(user, 'admin', 'dashboard');
+
+    document.getElementById('admin-name').textContent = profile.name || 'Admin';
+
+    try {
+      const [studentsSnap, facultySnap, coursesSnap, enrollSnap] = await Promise.all([
+        getDocs(query(collection(db, 'users'), where('role', '==', 'student'))),
+        getDocs(query(collection(db, 'users'), where('role', '==', 'faculty'))),
+        getDocs(collection(db, 'courses')),
+        getDocs(collection(db, 'enrollments'))
+      ]);
+      document.getElementById('stat-students').textContent = studentsSnap.size;
+      document.getElementById('stat-faculty').textContent = facultySnap.size;
+      document.getElementById('stat-courses').textContent = coursesSnap.size;
+      document.getElementById('stat-enrollments').textContent = enrollSnap.size;
+    } catch (err) {
+      console.error('Admin stats error:', err);
+      ['stat-students','stat-faculty','stat-courses','stat-enrollments'].forEach(id => {
+        document.getElementById(id).textContent = '—';
+      });
+    }
+  </script>
+
+</body>
+</html>

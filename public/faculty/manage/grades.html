@@ -76,9 +76,9 @@
     import { renderHeader } from '/js/components/header.js';
     import { renderFooter } from '/js/components/footer.js';
     import { showToast } from '/js/components/toast.js';
-    import { db } from '/js/firebase-config.js';
-    import { collection, addDoc, getDocs, deleteDoc, doc, query, where }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+    import { setGrade, getAllGrades, deleteGrade } from '/js/services/grade.service.js';
+    import { getAllStudents, buildUserMap } from '/js/services/user.service.js';
+    import { getAllCourses, buildCourseMap } from '/js/services/course.service.js';
     import { addCell, addBadgeCell, formatDate } from '/js/utils.js';
 
     renderFooter();
@@ -88,38 +88,41 @@
     const tbody = document.getElementById('table-body');
     const form = document.getElementById('add-form');
 
-    // Populate students
-    const studentsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
-    const studentsMap = {};
+    // Populate dropdowns from services (cached)
+    const [students, courses] = await Promise.all([getAllStudents(), getAllCourses()]);
+
     const studentSelect = document.getElementById('studentId');
-    studentsSnap.forEach(d => {
-      studentsMap[d.id] = d.data().name;
+    students.forEach(s => {
       const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.data().name;
+      opt.value = s.id;
+      opt.textContent = s.name;
       studentSelect.appendChild(opt);
     });
 
-    // Populate courses
-    const coursesSnap = await getDocs(collection(db, 'courses'));
-    const coursesMap = {};
     const courseSelect = document.getElementById('courseId');
-    coursesSnap.forEach(d => {
-      coursesMap[d.id] = d.data().name;
+    courses.forEach(c => {
       const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.data().name;
+      opt.value = c.id;
+      opt.textContent = c.name;
       courseSelect.appendChild(opt);
     });
 
     document.getElementById('gradeDate').valueAsDate = new Date();
 
+    // Build lookup maps
+    const studentsMap = {};
+    students.forEach(s => { studentsMap[s.id] = s.name; });
+    const coursesMap = {};
+    courses.forEach(c => { coursesMap[c.id] = c.name; });
+
     async function loadData() {
-      const snap = await getDocs(collection(db, 'grades'));
+      const grades = await getAllGrades();
       tbody.innerHTML = '';
-      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No grades assigned yet.</td></tr>'; return; }
-      snap.forEach(d => {
-        const data = d.data();
+      if (grades.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No grades assigned yet.</td></tr>';
+        return;
+      }
+      grades.forEach(data => {
         const tr = document.createElement('tr');
         addCell(tr, studentsMap[data.studentId] || data.studentId);
         addCell(tr, coursesMap[data.courseId] || data.courseId);
@@ -136,7 +139,7 @@
         delBtn.textContent = 'Delete';
         delBtn.addEventListener('click', async () => {
           if (confirm('Delete this grade?')) {
-            await deleteDoc(doc(db, 'grades', d.id));
+            await deleteGrade(data.id);
             showToast('Grade deleted', 'success');
             loadData();
           }
@@ -155,7 +158,8 @@
       const gradeDate = document.getElementById('gradeDate').value;
       if (!studentId || !courseId || !grade) return;
       try {
-        await addDoc(collection(db, 'grades'), { studentId, courseId, grade, gradeDate, createdAt: new Date().toISOString() });
+        // setGrade uses setDoc with deterministic ID — no duplicates possible
+        await setGrade(studentId, courseId, grade, gradeDate);
         showToast('Grade assigned!', 'success');
         form.reset();
         document.getElementById('gradeDate').valueAsDate = new Date();
@@ -170,3 +174,4 @@
 
 </body>
 </html>
+

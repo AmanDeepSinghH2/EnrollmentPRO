@@ -14,25 +14,27 @@ export function sanitize(str) {
   return div.innerHTML;
 }
 
-/**
- * Format a date string or Firestore timestamp to a readable format.
- * @param {string|object|Date} date
- * @returns {string}
- */
 export function formatDate(date) {
   if (!date) return '—';
   try {
+    let d;
     // Handle Firestore Timestamp
-    if (date.toDate) date = date.toDate();
-    // Handle ISO strings
-    const d = new Date(date);
+    if (date.toDate) {
+      d = date.toDate();
+    } else {
+      d = new Date(date);
+    }
+    
     if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('en-IN', {
+
+    // Using Intl.DateTimeFormat for maximum consistency
+    return new Intl.DateTimeFormat('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    });
-  } catch {
+    }).format(d);
+  } catch (err) {
+    console.error('Date formatting error:', err);
     return '—';
   }
 }
